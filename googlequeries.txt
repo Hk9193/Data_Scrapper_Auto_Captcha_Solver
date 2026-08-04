@@ -1,0 +1,27 @@
+"site:instagram.com \"DJ\" \"New York\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Los Angeles\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Miami\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Chicago\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Las Vegas\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Houston\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"San Francisco\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Atlanta\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"London\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Manchester\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Birmingham\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Paris\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Berlin\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Amsterdam\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"Barcelona\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"
+"site:instagram.com \"DJ\" \"United States\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"United Kingdom\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Canada\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Australia\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Germany\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"France\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Netherlands\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Spain\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Italy\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Sweden\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"New York\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")",
+"site:instagram.com \"DJ\" \"Los Angeles\" (\"booking\" OR \"contact\") (\"gmail.com\" OR \"outlook.com\" OR \"yahoo.com\" OR \"hotmail.com\")"

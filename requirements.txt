@@ -1,0 +1,24 @@
+# Core Web Scraping & Playwright
+playwright>=1.44.0
+playwright-stealth>=2.0.0
+requests>=2.31.0
+
+# Automated CAPTCHA Solver Dependencies
+# YOLOv8 image reCAPTCHA solver — PyPI package: recognizer (reCognizer / Vinyzu)
+# Detects buses, traffic lights, crosswalks, bicycles, etc. via ultralytics YOLOv8
+recognizer>=1.4
+ultralytics>=8.0.0
+# Audio fallback when image solver fails or IP is audio-blocked
+SpeechRecognition>=3.8.1
+pydub>=0.25.1
+static-ffmpeg>=3.0
+
+# Export & Google Sheets
+gspread>=6.1.2
+google-auth>=2.29.0
+google-auth-oauthlib>=1.2.0
+
+# Async Utilities & Logging
+aiofiles>=23.2.1
+colorlog>=6.8.2
+tenacity>=8.3.0
