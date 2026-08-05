@@ -1,7 +1,6 @@
 # Core Web Scraping & Playwright
 playwright>=1.44.0
 playwright-stealth>=2.0.0
-requests>=2.31.0
 
 # Automated CAPTCHA Solver Dependencies
 # YOLOv8 image reCAPTCHA solver — PyPI package: recognizer (reCognizer / Vinyzu)
@@ -16,9 +15,6 @@ static-ffmpeg>=3.0
 # Export & Google Sheets
 gspread>=6.1.2
 google-auth>=2.29.0
-google-auth-oauthlib>=1.2.0
 
-# Async Utilities & Logging
-aiofiles>=23.2.1
+# Logging
 colorlog>=6.8.2
-tenacity>=8.3.0

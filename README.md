@@ -1,6 +1,6 @@
-# DJ Email & Instagram Scraper 🎧
+# LinkedIn Email Scraper 📧
 
-A production-grade **async Playwright (Python)** scraper that extracts DJ Instagram usernames and emails from Google search results — including emails buried inside page comments.
+A production-grade **async Playwright (Python)** scraper that extracts business owner emails from Google search results — specifically targeting LinkedIn profiles with personal email addresses (Gmail, Outlook, Hotmail, Yahoo).
 
 ---
 
@@ -8,15 +8,14 @@ A production-grade **async Playwright (Python)** scraper that extracts DJ Instag
 
 | Feature | Details |
 |---|---|
-| 🔍 Google Search | Paginated (up to 10 pages per query) |
-| 📧 Email Extraction | Snippet · Page body · Comments · Expansion links |
-| 📸 Instagram Usernames | Extracted from URLs |
-| 💬 Comment Scraping | YouTube, generic CMS (Disqus, WordPress, etc.) |
-| 🔗 Link Expansion | Linktree, Beacons, bio.link, and more |
-| 🤖 Anti-Detection | User-agent rotation, random delays, visible browser |
-| ⚡ Async Concurrency | 5 tabs max (configurable) |
+| 🔍 Google Search | Paginated (up to 20 pages per query) |
+| 📧 Email Extraction | Snippet-based extraction (fast mode) or full page scraping |
+| 🤖 CAPTCHA Solving | YOLOv8 image solver + audio fallback (Speech-to-Text) |
+| 🌐 Anti-Detection | User-agent rotation, stealth mode, random delays, visible browser |
+| 🔁 Proxy Support | Optional proxy rotation per query |
 | 💾 Export | CSV + optional Google Sheets |
-| 🔁 Resumable | Skips already-seen emails across runs |
+| 🔄 Resumable | Skips already-seen emails across runs |
+| 🧩 Persistent Profile | Reuses browser session/cookies across runs |
 
 ---
 
@@ -24,14 +23,20 @@ A production-grade **async Playwright (Python)** scraper that extracts DJ Instag
 
 ```
 EmailScrapper/
-├── scraper.py          # Main async orchestrator
-├── config.py           # All settings + search queries
-├── utils.py            # Regex, cleaning, deduplication
-├── exporter.py         # CSV + Google Sheets writer
-├── logger_setup.py     # Coloured console + rotating file log
-├── requirements.txt    # Python dependencies
-├── results.csv         # Output (auto-created)
-└── scraper.log         # Log file (auto-created)
+├── scraper.py            # Main async orchestrator
+├── config.py             # All settings + search queries
+├── utils.py              # Regex, cleaning, deduplication, delays
+├── exporter.py           # CSV + Google Sheets writer
+├── captcha_solver.py     # Automated reCAPTCHA solver (YOLOv8 + audio)
+├── logger_setup.py       # Coloured console + rotating file log
+├── check_model.py        # YOLOv8 model verification script
+├── test_stealth.py       # Playwright stealth test script
+├── requirements.txt      # Python dependencies
+├── googlequeries.txt     # Alternative DJ/Instagram search queries (reference)
+├── yolov8m-seg.pt        # YOLOv8 segmentation model weights (CAPTCHA solver)
+├── results.csv           # Output (auto-created)
+├── scraper.log           # Log file (auto-created)
+└── browser_profile/      # Persistent Chromium profile (auto-created)
 ```
 
 ---
@@ -39,14 +44,14 @@ EmailScrapper/
 ## Setup
 
 ### 1. Prerequisites
-- **Python 3.10+** required
+- **Python 3.10+** required (tested on Python 3.12)
 - Windows / macOS / Linux
 
 ### 2. Create & activate a virtual environment
 
 ```powershell
 # Windows PowerShell
-cd d:\EmailScrapper
+cd EmailScrapper
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
@@ -58,6 +63,8 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
+> **Note:** The CAPTCHA solver uses `ultralytics` (YOLOv8) which installs `torch` and `torchvision` automatically. The model weights file `yolov8m-seg.pt` is included in the repo.
+
 ---
 
 ## Configuration
@@ -65,27 +72,65 @@ playwright install chromium
 Edit **`config.py`** before running:
 
 ### Search queries
+The scraper comes pre-configured with 30 LinkedIn search queries targeting business owners, founders, and CEOs across various UK cities:
+
 ```python
 SEARCH_QUERIES = [
-    "DJ booking email contact site:instagram.com",
-    "DJ producer email booking gmail.com",
-    # Add your own queries here...
+    'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Milton Keynes") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+    'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Reading") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+    # ... 28 more queries for UK cities
 ]
 ```
+
+> See `googlequeries.txt` for alternative DJ/Instagram-focused query examples.
 
 ### Key settings
 
 | Setting | Default | Description |
 |---|---|---|
-| `MAX_PAGES_PER_QUERY` | `10` | Google pages per query |
+| `MAX_PAGES_PER_QUERY` | `20` | Google pages to crawl per query |
+| `RESULTS_PER_PAGE` | `10` | Standard Google results per page |
+| `VISIT_URLS` | `False` | `False` = snippet-only mode (fast); `True` = visit each page |
 | `HEADLESS` | `False` | `True` = invisible browser |
 | `MAX_TABS` | `5` | Concurrent page visits |
 | `DELAY_MIN / MAX` | `2.0 / 5.0` | Random delay range (seconds) |
+| `PAGE_LOAD_TIMEOUT` | `30000` | Page load timeout (ms) |
+| `ELEMENT_TIMEOUT` | `10000` | Element wait timeout (ms) |
 | `MAX_RETRIES` | `2` | Retries on page failure |
+| `CAPTCHA_SOLVER` | `"yolo"` | CAPTCHA method: `yolo`, `audio`, or `yolo_then_audio` |
 | `EXPAND_LINKTREE` | `True` | Follow bio-aggregator links |
+| `EXPAND_EXTERNAL` | `True` | Follow external expansion links |
+
+### CAPTCHA Solver
+
+The scraper includes an automated Google reCAPTCHA solver with two methods:
+
+| Method | Description |
+|---|---|
+| `yolo` | YOLOv8 image challenge solver (recognizer library) — handles 3×3 / 4×4 image grids |
+| `audio` | Audio challenge + Google Speech Recognition fallback |
+| `yolo_then_audio` | YOLO first, audio fallback (recommended for reliability) |
+
+If automated solving fails, the scraper waits for **manual solve** in the open browser window, then automatically resumes.
+
+### Proxy / VPN
+
+Leave `PROXY_SERVER` empty to use your system VPN / direct connection:
+
+```python
+PROXY_SERVER   = ""   # e.g. "socks5://127.0.0.1:1080"
+PROXY_USERNAME = ""   # leave empty if no auth needed
+PROXY_PASSWORD = ""   # leave empty if no auth needed
+
+# Rotate proxies: scraper picks a random one per query
+PROXY_ROTATION_LIST = [
+    # "socks5://127.0.0.1:1080",
+    # "http://user:pass@proxy1.example.com:8080",
+]
+```
 
 ### Email blacklist
-Words in `EMAIL_BLACKLIST_KEYWORDS` will cause emails to be discarded (noreply, test, example, etc.).
+Words in `EMAIL_BLACKLIST_KEYWORDS` will cause emails to be discarded (noreply, test, example, etc.). Emails ending in image/video extensions (`.png`, `.jpg`, `.mp4`, etc.) are also filtered.
 
 ---
 
@@ -93,7 +138,7 @@ Words in `EMAIL_BLACKLIST_KEYWORDS` will cause emails to be discarded (noreply, 
 
 1. Create a **Google Cloud Service Account** and download the JSON credentials file.
 2. Share your target Google Sheet with the service account email.
-3. Place the JSON file in `d:\EmailScrapper\` and update `config.py`:
+3. Place the JSON file in the project root and update `config.py`:
 
 ```python
 GSHEET_CREDENTIALS_FILE = "gsheet_credentials.json"
@@ -108,23 +153,21 @@ If `GSHEET_NAME` is left empty (`""`), Google Sheets export is skipped.
 ## Running
 
 ```powershell
-# From d:\EmailScrapper with venv activated:
+# From project root with venv activated:
 python scraper.py
 ```
 
 ### What you'll see
 ```
-13:00:00 [INFO    ] ============================================================
-13:00:00 [INFO    ] DJ Email Scraper  — starting
-13:00:00 [INFO    ] Queries : 10  |  Max pages: 10  |  Max tabs: 5
-13:00:00 [INFO    ] ============================================================
-
-13:00:00 [INFO    ] >>> Query: DJ booking email contact site:instagram.com
-13:00:02 [INFO    ] Google search p1/10  →  DJ booking email contact ...
-13:00:07 [INFO    ]   [page]  https://example.com → 3 email(s)
-13:00:09 [INFO    ]   [comments] https://example.com → 1 email(s)
-13:00:12 [INFO    ]   [expand] Following → https://linktr.ee/djexample
+14:32:08 [INFO    ] Starting Scraper execution...
+14:32:14 [CRITICAL] GOOGLE CAPTCHA DETECTED! Running automated solver...
+14:33:55 [INFO    ] Attempting YOLOv8 image reCAPTCHA solve (recognizer) — attempt 1/3...
+14:35:07 [WARNING ] YOLOv8 reCAPTCHA solve error on attempt 1/3: Invisible reCaptcha Timed Out.
+14:37:46 [WARNING ] Automated solve attempt finished. Waiting for manual solve in open browser...
+14:37:46 [INFO    ] CAPTCHA solved! Resuming search...
 ```
+
+> **Important:** Google frequently shows CAPTCHAs during automated searches. If the YOLOv8 solver fails, solve the CAPTCHA manually in the browser window — the scraper will detect this and resume automatically.
 
 ---
 
@@ -132,12 +175,26 @@ python scraper.py
 
 | Column | Description |
 |---|---|
-| `username` | Instagram username (e.g. `djexample`) |
-| `email` | Email address |
-| `source_url` | Page where email was found |
-| `query_used` | Google query that led to this result |
-| `found_in` | `snippet` / `page` / `comment` / `expansion` |
-| `page_title` | Title of the source page |
+| `username` | Instagram username (if found in URL/text; empty for LinkedIn queries) |
+| `email` | Email address extracted from snippet or page |
+| `source_url` | LinkedIn profile URL where email was found |
+| `page_title` | Title of the source page (LinkedIn profile headline) |
+
+---
+
+## Utility Scripts
+
+### `check_model.py`
+Verifies the YOLOv8 model loads correctly and prints available classes:
+```powershell
+python check_model.py
+```
+
+### `test_stealth.py`
+Tests Playwright stealth plugin functionality:
+```powershell
+python test_stealth.py
+```
 
 ---
 
@@ -145,14 +202,18 @@ python scraper.py
 
 The scraper **automatically deduplicates** against `results.csv` between runs. Emails already saved will not be re-added.
 
+> **Note:** The persistent browser profile (`browser_profile/`) retains cookies and session data. If you get a "profile already in use" error, ensure no other instance of the scraper is running, or delete the `browser_profile/` directory to start fresh.
+
 ---
 
 ## Anti-blocking Tips
 
 - Keep `HEADLESS = False` to look more like a real browser.
-- Increase `DELAY_MIN` / `DELAY_MAX` if Google starts showing CAPTCHAs.
+- Increase `DELAY_MIN` / `DELAY_MAX` if Google starts showing CAPTCHAs frequently.
 - Add a Google account cookie by logging in manually (the browser window stays open).
 - Reduce `MAX_PAGES_PER_QUERY` to scrape less aggressively.
+- Use `PROXY_ROTATION_LIST` to distribute requests across multiple IPs.
+- Switch VPN or use a mobile hotspot if Google blocks your IP (audio CAPTCHA "Try again later" message).
 
 ---
 
@@ -164,3 +225,8 @@ The scraper **automatically deduplicates** against `results.csv` between runs. E
 | Google CAPTCHA appears | Solve it manually in the open browser window, scraper will continue |
 | `colorlog` not found | `pip install colorlog` |
 | Sheets auth error | Check service account email has edit access to the sheet |
+| "Profile already in use" error | Close any running scraper instances or delete `browser_profile/` |
+| YOLOv8 solver times out | Switch `CAPTCHA_SOLVER` to `"yolo_then_audio"` or solve manually |
+| Audio CAPTCHA "Try again later" | Google has IP-blocked audio challenges — switch VPN/IP or use YOLO image solver |
+| `recognizer` not installed | `pip install recognizer` |
+| `Invisible reCaptcha Timed Out` | Google served an invisible reCAPTCHA — solve manually in browser |
