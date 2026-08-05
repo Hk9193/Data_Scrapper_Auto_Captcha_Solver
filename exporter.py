@@ -20,6 +20,8 @@ FIELDNAMES = [
     "username",
     "email",
     "source_url",
+    "query_used",
+    "found_in",
     "page_title",
 ]
 
