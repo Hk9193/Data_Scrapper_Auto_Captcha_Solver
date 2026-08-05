@@ -1,3 +1,6 @@
-2026/08/05-12:48:32.951 6810 Reusing MANIFEST C:\Users\hanuman keskar\Downloads\EmailScrapper-main_cursor\browser_profile\Default\Local Storage\leveldb/MANIFEST-000001
-2026/08/05-12:48:33.004 6810 Recovering log #3
-2026/08/05-12:48:33.008 6810 Reusing old log C:\Users\hanuman keskar\Downloads\EmailScrapper-main_cursor\browser_profile\Default\Local Storage\leveldb/000003.log 
+2026/08/05-14:32:10.962 4cb4 Reusing MANIFEST C:\Users\hanuman keskar\Downloads\EmailScrapper-main_cursor\browser_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/08/05-14:32:10.993 4cb4 Recovering log #3
+2026/08/05-14:32:10.996 4cb4 Reusing old log C:\Users\hanuman keskar\Downloads\EmailScrapper-main_cursor\browser_profile\Default\Local Storage\leveldb/000003.log 
+2026/08/05-14:33:11.009 4cb4 Level-0 table #5: started
+2026/08/05-14:33:11.017 4cb4 Level-0 table #5: 50934 bytes OK
+2026/08/05-14:33:11.022 4cb4 Delete type=0 #3
