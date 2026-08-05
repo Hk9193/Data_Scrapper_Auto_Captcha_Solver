@@ -5,7 +5,7 @@ All tunable settings, search queries, and credentials live here.
 
 # ─── Search Queries ────────────────────────────────────────────────────────────
 SEARCH_QUERIES = [
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jacksonville") ("@gmail.com" OR "@outlook.com" OR "@yahoo.com")'
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("New york") ("@gmail.com" OR "@outlook.com" OR "@yahoo.com")'
 ]
 
 # ─── Pagination ────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ HEADLESS = False   # Set True for server / CI runs
 # "yolo"            — YOLOv8 image challenge only (recognizer)
 # "audio"           — audio challenge + speech-to-text only
 # "yolo_then_audio" — YOLO first, audio fallback (recommended)
-CAPTCHA_SOLVER = "yolo_then_audio"
+CAPTCHA_SOLVER = "yolo"
 
 # ─── Proxy / VPN ───────────────────────────────────────────────────────────────
 # Leave PROXY_SERVER empty to use your system VPN / direct connection.
