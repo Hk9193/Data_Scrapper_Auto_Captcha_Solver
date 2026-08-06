@@ -10,7 +10,7 @@ A production-grade **async Playwright (Python)** scraper for **sales and lead ge
 |---|---|
 | 🔍 Google Search | Paginated (up to 20 pages per query) |
 | 📧 Email Extraction | Snippet-based extraction (fast mode) or full page scraping |
-| 🤖 CAPTCHA Solving | YOLOv8 image solver + audio fallback (Speech-to-Text) |
+| 🤖 CAPTCHA Solving | **YOLOv8 / YOLO 11** image solver + audio fallback (Speech-to-Text) |
 | 🌐 Anti-Detection | User-agent rotation, stealth mode, random delays, visible browser |
 | 🔁 Proxy Support | Optional proxy rotation per query |
 | 💾 Export | CSV + optional Google Sheets |
@@ -22,18 +22,19 @@ A production-grade **async Playwright (Python)** scraper for **sales and lead ge
 ## Project Structure
 
 ```
-EmailScrapper/
+Data_Scrapper_Auto_Captcha_Solver/
 ├── scraper.py            # Main async orchestrator
 ├── config.py             # All settings + search queries
 ├── utils.py              # Regex, cleaning, deduplication, delays
 ├── exporter.py           # CSV + Google Sheets writer
-├── captcha_solver.py     # Automated reCAPTCHA solver (YOLOv8 + audio)
+├── captcha_solver.py     # Automated reCAPTCHA solver (YOLOv8/YOLO 11 + audio)
 ├── logger_setup.py       # Coloured console + rotating file log
-├── check_model.py        # YOLOv8 model verification script
+├── check_model.py        # YOLO model verification script (v8 + v11)
 ├── test_stealth.py       # Playwright stealth test script
 ├── requirements.txt      # Python dependencies
 ├── googlequeries.txt     # Alternative search queries (reference)
 ├── yolov8m-seg.pt        # YOLOv8 segmentation model weights (CAPTCHA solver)
+├── yolo11m-seg.pt        # YOLO 11 segmentation model weights (CAPTCHA solver)
 ├── results.csv           # Output (auto-created)
 ├── scraper.log           # Log file (auto-created)
 └── browser_profile/      # Persistent Chromium profile (auto-created)
@@ -51,7 +52,7 @@ EmailScrapper/
 
 ```powershell
 # Windows PowerShell
-cd EmailScrapper
+cd Data_Scrapper_Auto_Captcha_Solver
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
@@ -63,7 +64,7 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-> **Note:** The CAPTCHA solver uses `ultralytics` (YOLOv8) which installs `torch` and `torchvision` automatically. The model weights file `yolov8m-seg.pt` is included in the repo.
+> **Note:** The CAPTCHA solver uses `ultralytics` (YOLOv8 / YOLO 11) which installs `torch` and `torchvision` automatically. Both model weight files (`yolov8m-seg.pt` and `yolo11m-seg.pt`) are included in the repo.
 
 ---
 
@@ -82,7 +83,7 @@ SEARCH_QUERIES = [
 ]
 ```
 
-> See `googlequeries.txt` for additional example queries.
+> See `googlequeries.txt` for additional example queries (e.g. Instagram-based DJ/booking queries).
 
 ### Key settings
 
@@ -107,9 +108,11 @@ The scraper includes an automated Google reCAPTCHA solver with two methods:
 
 | Method | Description |
 |---|---|
-| `yolo` | YOLOv8 image challenge solver (recognizer library) — handles 3×3 / 4×4 image grids |
+| `yolo` | **YOLOv8 / YOLO 11** image challenge solver (recognizer library) — handles 3×3 / 4×4 image grids |
 | `audio` | Audio challenge + Google Speech Recognition fallback |
 | `yolo_then_audio` | YOLO first, audio fallback (recommended for reliability) |
+
+The CAPTCHA solver uses the **recognizer** library (Vinyzu) which leverages **ultralytics YOLO** models. Both **YOLOv8** (`yolov8m-seg.pt`) and **YOLO 11** (`yolo11m-seg.pt`) segmentation model weights are included in the repo. The recognizer library automatically detects the best available model for image classification challenges (buses, traffic lights, crosswalks, bicycles, etc.).
 
 If automated solving fails, the scraper waits for **manual solve** in the open browser window, then automatically resumes.
 
@@ -167,7 +170,7 @@ python scraper.py
 14:37:46 [INFO    ] CAPTCHA solved! Resuming search...
 ```
 
-> **Important:** Google frequently shows CAPTCHAs during automated searches. If the YOLOv8 solver fails, solve the CAPTCHA manually in the browser window — the scraper will detect this and resume automatically.
+> **Important:** Google frequently shows CAPTCHAs during automated searches. If the YOLO solver fails, solve the CAPTCHA manually in the browser window — the scraper will detect this and resume automatically.
 
 ---
 
@@ -178,6 +181,8 @@ python scraper.py
 | `username` | Username / handle (if found in URL/text; e.g. Instagram or social handle) |
 | `email` | Email address extracted from snippet or page |
 | `source_url` | Source URL where the data was found (e.g. LinkedIn profile, business website) |
+| `query_used` | The search query that produced this result |
+| `found_in` | Where the data was found (`google_snippet` or `page_content`) |
 | `page_title` | Title of the source page (e.g. LinkedIn profile headline, business name) |
 
 ---
@@ -185,7 +190,7 @@ python scraper.py
 ## Utility Scripts
 
 ### `check_model.py`
-Verifies the YOLOv8 model loads correctly and prints available classes:
+Verifies the YOLO model loads correctly and prints available classes. Supports both **YOLOv8** and **YOLO 11**:
 ```powershell
 python check_model.py
 ```
@@ -226,7 +231,7 @@ The scraper **automatically deduplicates** against `results.csv` between runs. E
 | `colorlog` not found | `pip install colorlog` |
 | Sheets auth error | Check service account email has edit access to the sheet |
 | "Profile already in use" error | Close any running scraper instances or delete `browser_profile/` |
-| YOLOv8 solver times out | Switch `CAPTCHA_SOLVER` to `"yolo_then_audio"` or solve manually |
+| YOLO solver times out | Switch `CAPTCHA_SOLVER` to `"yolo_then_audio"` or solve manually |
 | Audio CAPTCHA "Try again later" | Google has IP-blocked audio challenges — switch VPN/IP or use YOLO image solver |
 | `recognizer` not installed | `pip install recognizer` |
 | `Invisible reCaptcha Timed Out` | Google served an invisible reCAPTCHA — solve manually in browser |

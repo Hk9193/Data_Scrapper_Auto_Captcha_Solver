@@ -3,9 +3,9 @@ playwright>=1.44.0
 playwright-stealth>=2.0.0
 
 # Automated CAPTCHA Solver Dependencies
-# YOLOv8 image reCAPTCHA solver — reCognizer (Vinyzu) from GitHub repo
+# YOLOv8 / YOLO 11 image reCAPTCHA solver — reCognizer (Vinyzu) from GitHub repo
 # https://github.com/Vinyzu/recognizer
-# Detects buses, traffic lights, crosswalks, bicycles, etc. via ultralytics YOLOv8
+# Detects buses, traffic lights, crosswalks, bicycles, etc. via ultralytics YOLOv8 / YOLO 11
 # Installed from GitHub to get the latest API (optimize_click_order support)
 recognizer @ git+https://github.com/Vinyzu/recognizer.git
 ultralytics>=8.0.0

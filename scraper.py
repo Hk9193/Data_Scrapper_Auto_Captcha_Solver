@@ -148,7 +148,7 @@ class GoogleScraper:
         return results
 
 
-class DJScraper:
+class DataScraper:
     def __init__(self) -> None:
         self.global_seen_emails: Set[str] = set()
         self.global_seen_usernames: Set[str] = set()
@@ -299,5 +299,5 @@ class DJScraper:
 
 
 if __name__ == "__main__":
-    scraper = DJScraper()
+    scraper = DataScraper()
     asyncio.run(scraper.run())

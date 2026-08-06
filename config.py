@@ -115,7 +115,7 @@ OUTPUT_LOG      = "scraper.log"
 # ─── Google Sheets (optional) ──────────────────────────────────────────────────
 # Leave GSHEET_NAME empty to skip Google Sheets export
 GSHEET_CREDENTIALS_FILE = "gsheet_credentials.json"   # Service account JSON
-GSHEET_NAME             = ""                           # e.g. "DJ Leads"
+GSHEET_NAME             = ""                           # e.g. "Sales Leads"
 GSHEET_WORKSHEET        = "Sheet1"
 
 # ─── User-Agent Pool ───────────────────────────────────────────────────────────

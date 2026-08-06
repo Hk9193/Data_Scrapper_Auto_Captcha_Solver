@@ -1,7 +1,7 @@
 """
 captcha_solver.py — Automated Google reCAPTCHA solving.
 
-Primary: YOLOv8 image challenge solver (recognizer / ultralytics).
+Primary: YOLOv8 / YOLO 11 image challenge solver (recognizer / ultralytics).
           Handles the classic Google "Select all images with a <object>"
           (e.g. bus, bicycle, crosswalk) 3x3 / 4x4 grid challenges, including
           the *dynamic* variant that keeps refreshing new tiles after each
