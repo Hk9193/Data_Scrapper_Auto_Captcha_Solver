@@ -120,6 +120,14 @@ async def solve_recaptcha_yolo(page: Page, max_attempts: int = YOLO_MAX_ATTEMPTS
                 max_attempts,
                 err,
             )
+        finally:
+            # Clean up the route handler set up by AsyncChallenger.
+            # Prevents "Route.fetch: Target page, context or browser has been closed"
+            # from leaking into subsequent attempts / page lifecycle.
+            try:
+                await page.unroute_all(behavior="ignoreErrors")
+            except Exception:
+                pass
 
         if attempt < max_attempts:
             # Get a fresh grid before trying again — avoids getting stuck
