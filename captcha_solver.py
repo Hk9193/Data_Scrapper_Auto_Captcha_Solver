@@ -97,7 +97,11 @@ async def solve_recaptcha_yolo(page: Page, max_attempts: int = YOLO_MAX_ATTEMPTS
                 attempt,
                 max_attempts,
             )
-            challenger = AsyncChallenger(page, click_timeout=1500)
+            challenger = AsyncChallenger(
+                page,
+                click_timeout=1500,
+                optimize_click_order=True,
+            )
             await challenger.solve_recaptcha()
             await asyncio.sleep(2.5)
 

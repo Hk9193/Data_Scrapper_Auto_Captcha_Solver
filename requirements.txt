@@ -3,10 +3,15 @@ playwright>=1.44.0
 playwright-stealth>=2.0.0
 
 # Automated CAPTCHA Solver Dependencies
-# YOLOv8 image reCAPTCHA solver — PyPI package: recognizer (reCognizer / Vinyzu)
+# YOLOv8 image reCAPTCHA solver — reCognizer (Vinyzu) from GitHub repo
+# https://github.com/Vinyzu/recognizer
 # Detects buses, traffic lights, crosswalks, bicycles, etc. via ultralytics YOLOv8
-recognizer>=1.4
+# Installed from GitHub to get the latest API (optimize_click_order support)
+recognizer @ git+https://github.com/Vinyzu/recognizer.git
 ultralytics>=8.0.0
+# scipy is required by recognizer's Detector (scipy.ndimage / scipy.spatial.distance)
+# but is NOT declared as a dependency of the recognizer package itself.
+scipy>=1.10.0
 # Audio fallback when image solver fails or IP is audio-blocked
 SpeechRecognition>=3.8.1
 pydub>=0.25.1
