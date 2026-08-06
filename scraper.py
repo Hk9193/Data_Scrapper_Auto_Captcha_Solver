@@ -33,6 +33,7 @@ from config import (
     PROXY_USERNAME,
     SEARCH_QUERIES,
     USER_AGENTS,
+    VISIT_URLS,
 )
 from exporter import load_csv, save_to_csv, save_to_gsheet
 from logger_setup import setup_logger
@@ -162,6 +163,95 @@ class DJScraper:
             if row.get("username"):
                 self.global_seen_usernames.add(row["username"].lower())
 
+    def _process_target(self, target: Dict[str, str]) -> None:
+        """Extract emails/usernames from a single Google result (snippet + title)."""
+        title = target.get("title", "")
+        snippet = target.get("snippet", "")
+        url = target.get("url", "")
+        query = target.get("query", "")
+
+        # Combine all available text and extract emails
+        combined_text = f"{title}\n{snippet}\n{url}"
+        emails = extract_emails(combined_text)
+        usernames = extract_instagram_usernames(combined_text)
+
+        # Deduplicate against global seen sets
+        new_emails = deduplicate_emails(emails, self.global_seen_emails)
+        new_usernames = [
+            u for u in usernames
+            if u and u not in self.global_seen_usernames
+        ]
+        for u in new_usernames:
+            self.global_seen_usernames.add(u)
+
+        # Create a record per email (primary output)
+        if new_emails:
+            for email in new_emails:
+                username = new_usernames[0] if new_usernames else ""
+                self.records.append(ScrapedRecord(
+                    username=username,
+                    email=email,
+                    source_url=url,
+                    query_used=query,
+                    found_in="google_snippet",
+                    page_title=title,
+                ))
+            logger.info("Found %d new email(s) from %s", len(new_emails), url)
+        elif new_usernames:
+            # Record Instagram username even if no email found
+            for username in new_usernames:
+                self.records.append(ScrapedRecord(
+                    username=username,
+                    email="",
+                    source_url=url,
+                    query_used=query,
+                    found_in="google_snippet",
+                    page_title=title,
+                ))
+
+    async def _visit_and_extract(self, context: BrowserContext, target: Dict[str, str]) -> None:
+        """Visit a URL and extract emails/usernames from the page content."""
+        url = target.get("url", "")
+        if not url:
+            return
+        page = await self._new_page(context)
+        try:
+            await page.goto(url, wait_until="domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)
+            content = await page.content()
+            title = await page.title()
+            emails = extract_emails(content)
+            usernames = extract_instagram_usernames(content)
+
+            new_emails = deduplicate_emails(emails, self.global_seen_emails)
+            new_usernames = [
+                u for u in usernames
+                if u and u not in self.global_seen_usernames
+            ]
+            for u in new_usernames:
+                self.global_seen_usernames.add(u)
+
+            for email in new_emails:
+                username = new_usernames[0] if new_usernames else ""
+                self.records.append(ScrapedRecord(
+                    username=username,
+                    email=email,
+                    source_url=url,
+                    query_used=target.get("query", ""),
+                    found_in="page_content",
+                    page_title=title,
+                ))
+            if new_emails:
+                logger.info("Visited %s → found %d new email(s)", url, len(new_emails))
+        except Exception as exc:
+            logger.warning("Failed to visit %s: %s", url, exc)
+        finally:
+            await page.close()
+
+    async def _new_page(self, context: BrowserContext) -> Page:
+        page = await context.new_page()
+        await Stealth().apply_stealth_async(page)
+        return page
+
     async def run(self) -> None:
         logger.info("Starting Scraper execution...")
         async with async_playwright() as pw:
@@ -179,20 +269,30 @@ class DJScraper:
             )
 
             google_scraper = GoogleScraper(context)
-            
-            # Step 1: Collect URLs across all queries
-            search_targets: List[Dict[str, str]] = []
+
+            # Step 1: Collect URLs across all queries and process incrementally
             for query in SEARCH_QUERIES:
                 results = await google_scraper.search(query)
-                search_targets.extend(results)
+                logger.info("Query '%s' returned %d results.", query, len(results))
 
-            logger.info("Extracted %d total URLs to process.", len(search_targets))
+                # Step 2: Extract emails from snippets (always)
+                for target in results:
+                    self._process_target(target)
 
-            # Step 2: Save accumulated results
-            if self.records:
-                dicts = [r.as_dict() for r in self.records]
-                save_to_csv(dicts)
-                save_to_gsheet(dicts)
+                # Step 3: Optionally visit URLs for deeper extraction
+                if VISIT_URLS:
+                    for target in results:
+                        await self._visit_and_extract(context, target)
+
+                # Step 4: Save incrementally after each query to avoid data loss
+                if self.records:
+                    dicts = [r.as_dict() for r in self.records]
+                    save_to_csv(dicts)
+                    save_to_gsheet(dicts)
+                    logger.info("Saved %d record(s) after query '%s'.", len(dicts), query)
+                    self.records.clear()  # avoid re-saving on next iteration
+
+            logger.info("Scraping complete. Total unique emails: %d", len(self.global_seen_emails))
 
             await context.close()
 
