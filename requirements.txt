@@ -2,6 +2,11 @@
 playwright>=1.44.0
 playwright-stealth>=2.0.0
 
+# Patchright — stealth-enabled Playwright fork required by recognizer's
+# AsyncChallenger/SyncChallenger. Without it, recognizer falls back to
+# string placeholders for patchright types which breaks isinstance()/suppress().
+patchright>=1.40.0
+
 # Automated CAPTCHA Solver Dependencies
 # YOLOv8 / YOLO 11 image reCAPTCHA solver — reCognizer (Vinyzu) from GitHub repo
 # https://github.com/Vinyzu/recognizer
