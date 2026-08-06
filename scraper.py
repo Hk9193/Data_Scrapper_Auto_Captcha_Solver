@@ -104,6 +104,15 @@ class GoogleScraper:
                             await asyncio.sleep(3)
                         logger.info("CAPTCHA solved! Resuming search...")
 
+                    # Wait for the page to finish navigating back to the search
+                    # results after the CAPTCHA is cleared. Without this, the next
+                    # extraction races the navigation and throws
+                    # "Execution context was destroyed, most likely because of a navigation".
+                    await asyncio.sleep(2.5)
+                    try:
+                        await page.wait_for_load_state("domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)
+                    except Exception:
+                        pass
 
                 results = await self._extract_results(page, query)
                 all_results.extend(results)
