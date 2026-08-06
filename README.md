@@ -1,6 +1,6 @@
-# LinkedIn Email Scraper 📧
+# Data Scraper 🕵️
 
-A production-grade **async Playwright (Python)** scraper that extracts business owner emails from Google search results — specifically targeting LinkedIn profiles with personal email addresses (Gmail, Outlook, Hotmail, Yahoo).
+A production-grade **async Playwright (Python)** scraper for **sales and lead generation**. It scrapes business data — **emails, contacts, owners, and more** — directly from Google search results, targeting business owners, founders, CEOs, and entrepreneurs (e.g. LinkedIn profiles with personal email addresses such as Gmail, Outlook, Hotmail, Yahoo).
 
 ---
 
@@ -32,7 +32,7 @@ EmailScrapper/
 ├── check_model.py        # YOLOv8 model verification script
 ├── test_stealth.py       # Playwright stealth test script
 ├── requirements.txt      # Python dependencies
-├── googlequeries.txt     # Alternative DJ/Instagram search queries (reference)
+├── googlequeries.txt     # Alternative search queries (reference)
 ├── yolov8m-seg.pt        # YOLOv8 segmentation model weights (CAPTCHA solver)
 ├── results.csv           # Output (auto-created)
 ├── scraper.log           # Log file (auto-created)
@@ -82,7 +82,7 @@ SEARCH_QUERIES = [
 ]
 ```
 
-> See `googlequeries.txt` for alternative DJ/Instagram-focused query examples.
+> See `googlequeries.txt` for additional example queries.
 
 ### Key settings
 
@@ -142,7 +142,7 @@ Words in `EMAIL_BLACKLIST_KEYWORDS` will cause emails to be discarded (noreply, 
 
 ```python
 GSHEET_CREDENTIALS_FILE = "gsheet_credentials.json"
-GSHEET_NAME             = "DJ Leads"        # Name of your spreadsheet
+GSHEET_NAME             = "Sales Leads"     # Name of your spreadsheet
 GSHEET_WORKSHEET        = "Sheet1"
 ```
 
@@ -175,10 +175,10 @@ python scraper.py
 
 | Column | Description |
 |---|---|
-| `username` | Instagram username (if found in URL/text; empty for LinkedIn queries) |
+| `username` | Username / handle (if found in URL/text; e.g. Instagram or social handle) |
 | `email` | Email address extracted from snippet or page |
-| `source_url` | LinkedIn profile URL where email was found |
-| `page_title` | Title of the source page (LinkedIn profile headline) |
+| `source_url` | Source URL where the data was found (e.g. LinkedIn profile, business website) |
+| `page_title` | Title of the source page (e.g. LinkedIn profile headline, business name) |
 
 ---
 
