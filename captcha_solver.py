@@ -7,6 +7,10 @@ Primary: YOLOv8 / YOLO 11 image challenge solver (recognizer / ultralytics).
           the *dynamic* variant that keeps refreshing new tiles after each
           click ("Click verify once there are none left.").
 Fallback: Audio challenge + speech-to-text when image solving fails or is blocked.
+
+Humanization: Every CAPTCHA session generates a fresh HumanBehavior profile
+              (thinking speed, mouse speed, max YOLO attempts, max retries).
+              All timing values are regenerated independently per action.
 """
 
 from __future__ import annotations
@@ -14,19 +18,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import random
 import tempfile
 from typing import Optional
 
 from playwright.async_api import Page
 
-logger = logging.getLogger("scraper")
+from human_behavior import HumanBehavior, HumanizedAsyncChallenger
 
-# How many full solve attempts to give the YOLO solver before giving up on it.
-# Google occasionally re-serves a fresh grid ("Please try again") even after a
-# technically-correct selection, so a single attempt is not always enough.
-YOLO_MAX_ATTEMPTS = 3
-AUDIO_MAX_ATTEMPTS = 2
+logger = logging.getLogger("scraper")
 
 
 def captcha_cleared(page: Page) -> bool:
@@ -59,7 +58,7 @@ async def _challenge_has_error(bframe) -> bool:
     return False
 
 
-async def _click_reload_button(page: Page) -> None:
+async def _click_reload_button(page: Page, behavior: HumanBehavior) -> None:
     """Click the circular reload/refresh icon to get a brand-new challenge."""
     bframe = await _find_recaptcha_frame(page, "bframe")
     if not bframe:
@@ -67,28 +66,31 @@ async def _click_reload_button(page: Page) -> None:
     try:
         reload_btn = await bframe.query_selector("#recaptcha-reload-button")
         if reload_btn:
+            # Human pause before pressing reload
+            await asyncio.sleep(behavior.delay("before_reload"))
             await reload_btn.click()
-            await asyncio.sleep(1.5)
+            # Wait a random duration after reload before solving again
+            await asyncio.sleep(behavior.delay("after_reload"))
     except Exception:
         pass
 
 
-async def solve_recaptcha_yolo(page: Page, max_attempts: int = YOLO_MAX_ATTEMPTS) -> bool:
+async def solve_recaptcha_yolo(
+    page: Page,
+    behavior: HumanBehavior,
+    max_attempts: Optional[int] = None,
+) -> bool:
     """
     Solve reCAPTCHA image challenges with YOLOv8 (recognizer AsyncChallenger).
 
     Retries up to *max_attempts* times because Google sometimes keeps issuing
     new image grids ("Please try again.") even after a valid selection —
     a single pass through the solver is not always enough to clear it.
+
+    max_attempts defaults to behavior.max_yolo_attempts (random 3-10 per session).
     """
-    try:
-        # pyrefly: ignore [missing-import]
-        from recognizer.agents.playwright import AsyncChallenger
-    except ImportError:
-        logger.warning(
-            "recognizer is not installed. Install with: pip install recognizer"
-        )
-        return False
+    if max_attempts is None:
+        max_attempts = behavior.max_yolo_attempts
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -97,12 +99,18 @@ async def solve_recaptcha_yolo(page: Page, max_attempts: int = YOLO_MAX_ATTEMPTS
                 attempt,
                 max_attempts,
             )
-            challenger = AsyncChallenger(
+
+            # Human pause before clicking the checkbox
+            await asyncio.sleep(behavior.delay("before_checkbox"))
+
+            challenger = HumanizedAsyncChallenger(
                 page,
-                click_timeout=1500,
+                human_behavior=behavior,
             )
             await challenger.solve_recaptcha()
-            await asyncio.sleep(2.5)
+
+            # Human pause after successful recognition before checking result
+            await asyncio.sleep(behavior.delay("after_success"))
 
             if captcha_cleared(page):
                 logger.info("YOLOv8 reCAPTCHA solve successful!")
@@ -132,15 +140,20 @@ async def solve_recaptcha_yolo(page: Page, max_attempts: int = YOLO_MAX_ATTEMPTS
         if attempt < max_attempts:
             # Get a fresh grid before trying again — avoids getting stuck
             # re-analysing the exact same (already-wrong) tiles.
-            await _click_reload_button(page)
-            await asyncio.sleep(random.uniform(1.0, 2.0))
+            await _click_reload_button(page, behavior)
 
     return False
 
 
-
-async def solve_recaptcha_audio(page: Page, max_attempts: int = AUDIO_MAX_ATTEMPTS) -> bool:
+async def solve_recaptcha_audio(
+    page: Page,
+    behavior: HumanBehavior,
+    max_attempts: Optional[int] = None,
+) -> bool:
     """Fallback: solve reCAPTCHA via audio challenge + Google Speech Recognition."""
+    if max_attempts is None:
+        max_attempts = 2  # audio fallback stays at 2 attempts
+
     try:
         import static_ffmpeg
 
@@ -171,8 +184,10 @@ async def solve_recaptcha_audio(page: Page, max_attempts: int = AUDIO_MAX_ATTEMP
                 checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
                 if checkbox:
                     logger.info("Clicking 'I'm not a robot' checkbox...")
+                    # Human pause before clicking checkbox
+                    await asyncio.sleep(behavior.delay("before_checkbox"))
                     await checkbox.click()
-                    await asyncio.sleep(2.5)
+                    await asyncio.sleep(behavior.delay("after_challenge_load"))
 
             if captcha_cleared(page):
                 logger.info("reCAPTCHA solved by checkbox click!")
@@ -189,7 +204,7 @@ async def solve_recaptcha_audio(page: Page, max_attempts: int = AUDIO_MAX_ATTEMP
             if audio_button:
                 logger.info("Clicking Audio Challenge button...")
                 await audio_button.click()
-                await asyncio.sleep(2)
+                await asyncio.sleep(behavior.delay("audio_wait"))
 
             dos_element = await bframe.query_selector(
                 '.rc-dossafety-header, .rc-audiochallenge-error-message, div:has-text("Try again later")'
@@ -250,13 +265,15 @@ async def solve_recaptcha_audio(page: Page, max_attempts: int = AUDIO_MAX_ATTEMP
             input_box = await bframe.wait_for_selector("#audio-response", timeout=4000)
             if input_box:
                 await input_box.fill(digits)
-                await asyncio.sleep(1)
+                await asyncio.sleep(behavior.delay("audio_input"))
                 verify_btn = await bframe.wait_for_selector(
                     "#recaptcha-verify-button", timeout=4000
                 )
                 if verify_btn:
+                    # Human pause before pressing verify
+                    await asyncio.sleep(behavior.delay("verify_pause"))
                     await verify_btn.click()
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(behavior.delay("audio_verify"))
 
             try:
                 os.remove(mp3_path)
@@ -283,10 +300,9 @@ async def solve_recaptcha_audio(page: Page, max_attempts: int = AUDIO_MAX_ATTEMP
             )
 
         if attempt < max_attempts:
-            await asyncio.sleep(random.uniform(1.5, 3.0))
+            await asyncio.sleep(behavior.delay("audio_wait"))
 
     return False
-
 
 
 async def auto_solve_captcha(page: Page, method: str = "yolo_then_audio") -> bool:
@@ -297,12 +313,18 @@ async def auto_solve_captcha(page: Page, method: str = "yolo_then_audio") -> boo
       - "yolo"            — YOLOv8 image solver only
       - "audio"           — audio challenge only
       - "yolo_then_audio" — try YOLO first, then audio fallback (default)
+
+    A fresh HumanBehavior profile is generated for every CAPTCHA session.
     """
+    # Generate a fresh HumanBehavior for this CAPTCHA session
+    behavior = HumanBehavior.create()
+    behavior.log_session_info()
+
     if method in ("yolo", "yolo_then_audio"):
-        if await solve_recaptcha_yolo(page):
+        if await solve_recaptcha_yolo(page, behavior):
             return True
 
     if method in ("audio", "yolo_then_audio"):
-        return await solve_recaptcha_audio(page)
+        return await solve_recaptcha_audio(page, behavior)
 
     return False

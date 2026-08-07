@@ -5,36 +5,45 @@ All tunable settings, search queries, and credentials live here.
 
 # ─── Search Queries ────────────────────────────────────────────────────────────
 SEARCH_QUERIES = [
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Milton Keynes") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Reading") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Northampton") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Luton") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Swindon") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Peterborough") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("York") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gloucester") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Chelmsford") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Exeter") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lincoln") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Chester") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Worcester") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Canterbury") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bath") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Salisbury") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ipswich") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Colchester") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Blackpool") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Southend-on-Sea" OR Southend) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Middlesbrough") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Stockton-on-Tees") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Darlington") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Harrogate") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Carlisle") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lancaster") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Inverness") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Perth") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dundee") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Stirling") ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")'
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Saskatoon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Regina") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Oshawa") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Barrie") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kelowna") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Abbotsford") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Guelph") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Cambridge") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Waterloo") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("St. Catharines" OR "Saint Catharines") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Niagara Falls") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kingston") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Victoria") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Coquitlam") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Langley") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Richmond Hill") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Oakville") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Burlington") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ajax") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Whitby") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")'
 ]
 
 # ─── Pagination ────────────────────────────────────────────────────────────────
