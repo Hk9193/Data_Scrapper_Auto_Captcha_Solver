@@ -11,6 +11,7 @@ A production-grade **async Playwright (Python)** scraper for **sales and lead ge
 | 🔍 Google Search | Paginated (up to 20 pages per query) |
 | 📧 Email Extraction | Snippet-based extraction (fast mode) or full page scraping |
 | 🤖 CAPTCHA Solving | **YOLOv8 / YOLO 11** image solver + audio fallback (Speech-to-Text) |
+| 🧠 Humanized Solving | Per-session behavior profiles (Fast/Normal/Careful) with randomized timing, mouse movement & per-tile delays |
 | 🌐 Anti-Detection | User-agent rotation, stealth mode, random delays, visible browser |
 | 🔁 Proxy Support | Optional proxy rotation per query |
 | 💾 Export | CSV + optional Google Sheets |
@@ -28,6 +29,7 @@ Data_Scrapper_Auto_Captcha_Solver/
 ├── utils.py              # Regex, cleaning, deduplication, delays
 ├── exporter.py           # CSV + Google Sheets writer
 ├── captcha_solver.py     # Automated reCAPTCHA solver (YOLOv8/YOLO 11 + audio)
+├── human_behavior.py     # Human-like CAPTCHA session profiles & timing randomization
 ├── logger_setup.py       # Coloured console + rotating file log
 ├── check_model.py        # YOLO model verification script (v8 + v11)
 ├── test_stealth.py       # Playwright stealth test script
@@ -116,6 +118,33 @@ The CAPTCHA solver uses the **recognizer** library (Vinyzu) which leverages **ul
 
 If automated solving fails, the scraper waits for **manual solve** in the open browser window, then automatically resumes.
 
+### Humanized CAPTCHA Solving
+
+Every CAPTCHA session generates a fresh **HumanBehavior profile** (`human_behavior.py`) that makes each solve behave differently:
+
+- **Behaviour Profiles**: `Fast` / `Normal` / `Careful` — randomly chosen per session
+- **Mouse Speed**: `Fast` / `Medium` / `Slow` — randomly chosen per session
+- **Maximum YOLO Attempts**: random integer between **3 and 10** per session
+- **Maximum Retries**: random integer between **15 and 25** per session
+- **Randomized Timing**: every pause (before checkbox, before verify, after reload, etc.) is regenerated independently
+- **Human Mouse Behavior**: hesitation, micro-pauses, ±2-8px cursor offsets, and overshoot correction before every tile click
+- **Per-Tile Delays**: fresh random delay between each tile click (e.g. 2.18s, 4.61s, 3.22s...)
+- **Verify Pause**: 2-6 seconds before pressing Verify (as if checking selected tiles)
+- **Reload Pause**: random 1.5-5s before pressing reload, plus additional wait after
+
+When a CAPTCHA session starts, the scraper logs:
+```
+==================================================
+CAPTCHA Session Started
+Behaviour Profile: Careful
+Maximum YOLO Attempts: 8
+Maximum Retries: 19
+Mouse Speed: Medium
+==================================================
+```
+
+This module **does not modify** the recognizer library. It subclasses `AsyncChallenger` to wrap human behavior around the existing YOLO detection pipeline.
+
 ### Proxy / VPN
 
 Leave `PROXY_SERVER` empty to use your system VPN / direct connection:
@@ -164,8 +193,15 @@ python scraper.py
 ```
 14:32:08 [INFO    ] Starting Scraper execution...
 14:32:14 [CRITICAL] GOOGLE CAPTCHA DETECTED! Running automated solver...
-14:33:55 [INFO    ] Attempting YOLOv8 image reCAPTCHA solve (recognizer) — attempt 1/3...
-14:35:07 [WARNING ] YOLOv8 reCAPTCHA solve error on attempt 1/3: Invisible reCaptcha Timed Out.
+14:32:14 [INFO    ] ==================================================
+14:32:14 [INFO    ] CAPTCHA Session Started
+14:32:14 [INFO    ] Behaviour Profile: Careful
+14:32:14 [INFO    ] Maximum YOLO Attempts: 8
+14:32:14 [INFO    ] Maximum Retries: 19
+14:32:14 [INFO    ] Mouse Speed: Medium
+14:32:14 [INFO    ] ==================================================
+14:33:55 [INFO    ] Attempting YOLOv8 image reCAPTCHA solve (recognizer) — attempt 1/8...
+14:35:07 [WARNING ] YOLOv8 reCAPTCHA solve error on attempt 1/8: Invisible reCaptcha Timed Out.
 14:37:46 [WARNING ] Automated solve attempt finished. Waiting for manual solve in open browser...
 14:37:46 [INFO    ] CAPTCHA solved! Resuming search...
 ```
@@ -247,8 +283,6 @@ The CAPTCHA solver is an automated solution that uses artificial intelligence to
 Process 
 ## Complete CAPTCHA Solver Flow — How It Works
 
-The log confirms the fixes are working — **3 successful CAPTCHA solves** at 18:34, 18:53, and 19:04.
-
 Here's the complete end-to-end flow of how the CAPTCHA solver detects and solves Google reCAPTCHA:
 
 ---
@@ -267,31 +301,34 @@ The scraper checks the page URL after each Google search. If Google redirects to
 
 ```
 auto_solve_captcha(page, method="yolo")
-  └── solve_recaptcha_yolo(page, max_attempts=3)
+  └── HumanBehavior.create()  →  Fresh profile per session
+  └── solve_recaptcha_yolo(page, behavior)
 ```
 
-The `auto_solve_captcha` function dispatches to the YOLO image solver (configured via `CAPTCHA_SOLVER = "yolo"` in `config.py`). It tries up to **3 full attempts** because Google sometimes re-serves a fresh grid even after a correct selection.
+The `auto_solve_captcha` function generates a fresh **HumanBehavior** profile (thinking profile, mouse speed, YOLO attempts 3-10, retries 15-25) and dispatches to the YOLO image solver (configured via `CAPTCHA_SOLVER = "yolo"` in `config.py`). It tries up to the session's random attempt count because Google sometimes re-serves a fresh grid even after a correct selection.
 
 ---
 
-### Step 3: Initialize the Challenger (in `recognizer/agents/playwright/async_control.py`)
+### Step 3: Initialize the Challenger (in `human_behavior.py` → `recognizer/agents/playwright/async_control.py`)
 
 ```python
-challenger = AsyncChallenger(page, click_timeout=1500)
+challenger = HumanizedAsyncChallenger(page, human_behavior=behavior)
 ```
 
-This creates a `AsyncChallenger` object that:
+This creates a `HumanizedAsyncChallenger` that **subclasses** recognizer's `AsyncChallenger` (source untouched) and:
 - Loads the **YOLO11 segmentation model** (`yolo11m-seg.pt`) and **CLIP/CLIPSeg models** for image understanding
 - Sets up a **route interceptor** to monitor Google's reCAPTCHA API calls (`reload` and `userverify` endpoints)
 - The route handler detects if the challenge is **dynamic** (keeps refreshing tiles) and captures the **CAPTCHA token** when solved
+- Adds human-like timing, mouse movement, and per-tile delays around the detection pipeline
 
 ---
 
 ### Step 4: Click the Checkbox (in `solve_recaptcha()`)
 
 ```python
+# Human pause before clicking checkbox (0.7-2.8s profile-adjusted)
+await asyncio.sleep(behavior.delay("before_checkbox"))
 await self.click_checkbox()   # Clicks "I'm not a robot" checkbox
-await self.page.wait_for_timeout(2000)
 ```
 
 The solver finds the reCAPTCHA checkbox iframe (`iframe[title='reCAPTCHA']`) and clicks the `.recaptcha-checkbox-border` element. This either:
@@ -347,18 +384,16 @@ The solver waits until the image grid is fully loaded — either **9 tiles** (3�
 
 ---
 
-### Step 8: Capture the Grid Image (in `detect_tiles()` — **my fix**)
+### Step 8: Capture the Grid Image (in `detect_tiles()`)
 
 ```python
-# NEW: Capture ONLY the bframe iframe, not the full page
+# Capture ONLY the bframe iframe, not the full page
 bframe_locator = self.page.locator("//iframe[contains(@src,'bframe')]")
 bbox = await bframe_locator.bounding_box()          # Get iframe position
 image_bytes = await captcha_frame.locator("body").screenshot()  # Screenshot iframe only
 ```
 
-**Before my fix:** The solver took a **full-page screenshot** which included Google's white search results, confusing the tile detection.
-
-**After my fix:** It captures **only the CAPTCHA iframe content** and records the iframe's position on the page for accurate click coordinates.
+The solver captures **only the CAPTCHA iframe content** and records the iframe's position on the page for accurate click coordinates.
 
 ---
 
@@ -390,20 +425,33 @@ The detector returns:
 
 ---
 
-### Step 10: Click the Correct Tiles (in `detect_tiles()` — **my fix**)
+### Step 10: Click the Correct Tiles (in `detect_tiles()` — humanized)
 
 ```python
-# NEW: Offset coordinates by iframe position
-click_coords = [(x + offset_x, y + offset_y) for x, y in coordinates]
-
 for coord_x, coord_y in click_coords:
-    await self.page.mouse.click(coord_x, coord_y)
-    await self.page.wait_for_timeout(1500)   # click_timeout
+    # Human hesitation before click
+    await asyncio.sleep(behavior.delay("mouse_hesitation"))
+
+    # Random offset within ±2-8 pixels
+    dx, dy = behavior.mouse_offset()
+    target_x, target_y = coord_x + dx, coord_y + dy
+
+    # Overshoot correction
+    await self.page.mouse.move(target_x + 1-3, target_y + 1-3)
+    await asyncio.sleep(behavior.delay("mouse_micro_pause"))
+    await self.page.mouse.move(target_x, target_y)
+
+    # Click and wait fresh random delay between tiles
+    await self.page.mouse.click(target_x, target_y)
+    await asyncio.sleep(behavior.delay("tile_click"))
 ```
 
-**Before my fix:** Clicks were at wrong positions because coordinates were computed for the full page but the grid is inside the iframe.
-
-**After my fix:** The iframe's position is added to the tile coordinates, so clicks land exactly on the correct tiles.
+**Humanization:** Every tile click has:
+- Small hesitation (0.05-0.6s based on mouse personality)
+- Random cursor offset (±2-8 px) staying inside element boundaries
+- Tiny overshoot correction (like a real mouse movement)
+- Micro pause before click
+- **Fresh random delay between each tile** (never reused)
 
 ---
 
@@ -420,14 +468,16 @@ If Google shows a **dynamic challenge** ("Click verify once there are none left"
 
 ---
 
-### Step 12: Submit the Answer
+### Step 12: Submit the Answer (humanized)
 
 ```python
+# Human pause before pressing verify — as if checking selected tiles (2-6s)
+await asyncio.sleep(behavior.delay("verify_pause"))
 submit_button = captcha_frame.locator("#recaptcha-verify-button")
 await submit_button.click()
 ```
 
-The solver clicks the **Verify** button to submit the selected tiles.
+The solver pauses **2-6 seconds** (profile-adjusted) before clicking the **Verify** button, simulating a user double-checking their selections.
 
 ---
 
@@ -448,19 +498,23 @@ The solver checks if a **CAPTCHA token** was obtained via:
 
 ---
 
-### Step 14: Handle Errors & Retry
+### Step 14: Handle Errors & Retry (humanized)
 
 ```python
 # If "Please try again" error appears
 incorrect = captcha_frame.locator("[class='rc-imageselect-incorrect-response']")
 if await incorrect.is_visible():
+    # Human pause before pressing reload
+    await asyncio.sleep(behavior.delay("before_reload"))
     await self.load_captcha(captcha_frame, reset=True)   # Reload grid
+    # Wait after reload before solving again
+    await asyncio.sleep(behavior.delay("after_reload"))
 
 # If no token after 5 seconds, retry the whole process
 return await self.handle_recaptcha()
 ```
 
-If the answer was wrong, Google shows an error and the solver **reloads the grid** and tries again (up to 15 retries internally, and 3 full attempts from `captcha_solver.py`).
+If the answer was wrong, Google shows an error and the solver **reloads the grid** and tries again. Reloads now include a human pause before (1.5-5s) and after (2-5.5s). Retries are randomized **15-25 times** internally (was fixed 15), and **3-10 full attempts** from `captcha_solver.py` (was fixed 3).
 
 ---
 
@@ -476,7 +530,7 @@ The solver checks if the page URL no longer contains `/sorry/index`. If cleared,
 
 ---
 
-### Step 16: Route Cleanup (in `captcha_solver.py` — **my fix**)
+### Step 16: Route Cleanup (in `captcha_solver.py`)
 
 ```python
 finally:
@@ -492,27 +546,24 @@ After each attempt, the route interceptor is cleaned up to prevent `Route.fetch:
 ```
 Google Search → CAPTCHA Detected (/sorry/index)
     ↓
-auto_solve_captcha() → solve_recaptcha_yolo()
+auto_solve_captcha() → HumanBehavior.create() (fresh profile per session)
     ↓
-AsyncChallenger created (loads YOLO11 + CLIP models)
+HumanizedAsyncChallenger created (subclasses AsyncChallenger — recognizer untouched)
     ↓
-Click "I'm not a robot" checkbox
+Human pause → Click "I'm not a robot" checkbox
     ↓
 Challenge appears → Read prompt text ("Select all images with X")
     ↓
 Wait for 3×3 or 4×4 grid to load
     ↓
-Screenshot ONLY the bframe iframe (my fix)
+Screenshot ONLY the bframe iframe
     ↓
 YOLO11 detects objects → CLIP/CLIPSeg for hard objects
     ↓
-Click matching tiles (offset by iframe position — my fix)
+Click matching tiles with human mouse behavior + per-tile random delays
     ↓
-Click Verify → Check for CAPTCHA token
+Human pause (2-6s) → Click Verify → Check for CAPTCHA token
     ↓
 Token obtained? → CAPTCHA cleared → Resume scraping
     ↓
-No token? → Reload grid → Retry (up to 15× internally, 3× externally)
-```
-
-The log confirms this flow now works — **3 successful solves** at 18:34, 18:53, and 19:04 on Aug 6.
+No token? → Human pause → Reload grid → Retry (15-25 × internally, 3-10 × externally)
