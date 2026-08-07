@@ -38,8 +38,8 @@ SEARCH_QUERIES = [
 ]
 
 # ─── Pagination ────────────────────────────────────────────────────────────────
-MAX_PAGES_PER_QUERY = 20       # Google pages to crawl per query
-RESULTS_PER_PAGE    = 10       # Standard Google results per page
+MAX_PAGES_PER_QUERY = 10       # Google pages to crawl per query
+RESULTS_PER_PAGE    = 20       # Standard Google results per page
 
 # ─── Scraping Strategy ─────────────────────────────────────────────────────────
 VISIT_URLS = False             # Set to False to ONLY scrape Google Snippets (extremely fast)
