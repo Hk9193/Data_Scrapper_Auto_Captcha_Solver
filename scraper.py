@@ -108,21 +108,19 @@ class GoogleScraper:
                 logger.info("CAPTCHA solved successfully by automated solver!")
                 return True
 
-            # If we're on the sorry page, try navigating to Google to trigger the checkbox
+            # NOTE: We do NOT navigate to google.com just because "/sorry/index"
+            # is in the URL. An expired CAPTCHA can remain on the same URL, and
+            # navigating away does not help recover from the expired state.
+            # The solver (auto_solve_captcha) now handles the EXPIRED state
+            # internally by re-clicking the checkbox and waiting for a fresh
+            # challenge. Navigation is only a last resort after the solver
+            # has genuinely failed.
             if "/sorry/index" in page.url:
-                logger.info("On Google CAPTCHA wall. Navigating to Google to trigger challenge...")
-                try:
-                    await page.goto(
-                        "https://www.google.com",
-                        wait_until="domcontentloaded",
-                        timeout=PAGE_LOAD_TIMEOUT,
-                    )
-                    await asyncio.sleep(2)
-                    if captcha_cleared(page):
-                        logger.info("Navigated away from CAPTCHA wall successfully!")
-                        return True
-                except Exception as e:
-                    logger.warning("Navigation attempt failed: %s", e)
+                logger.info(
+                    "Still on Google CAPTCHA wall after solver attempt. "
+                    "The solver may have detected an expired challenge. "
+                    "Proceeding to manual fallback."
+                )
 
             # If automated solver failed, wait for manual solve with timeout
             if attempt < MAX_CAPTCHA_ATTEMPTS:

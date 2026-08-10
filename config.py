@@ -5,34 +5,6 @@ All tunable settings, search queries, and credentials live here.
 
 # ─── Search Queries ────────────────────────────────────────────────────────────
 SEARCH_QUERIES = [
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Saskatoon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Regina") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Oshawa") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Barrie") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kelowna") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Abbotsford") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Guelph") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Cambridge") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Waterloo") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("St. Catharines" OR "Saint Catharines") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Niagara Falls") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kingston") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Victoria") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Coquitlam") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Langley") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Richmond Hill") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',

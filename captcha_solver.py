@@ -118,6 +118,160 @@ async def _click_reload_button(page: Page, behavior: HumanBehavior) -> None:
         pass
 
 
+async def _detect_expired_state(page: Page) -> bool:
+    """
+    Detect whether the reCAPTCHA challenge has expired.
+
+    Google shows "Verification challenge expired. Check the checkbox again."
+    when the challenge has timed out. In this state, the image grid is gone
+    (0 tiles) and the checkbox needs to be re-clicked to get a fresh challenge.
+
+    Returns True if the challenge is in an EXPIRED state, False otherwise.
+    """
+    try:
+        bframe = await _find_recaptcha_frame(page, "bframe")
+        if not bframe:
+            return False
+
+        # Look for the expired-challenge message in the bframe
+        expired_el = await bframe.query_selector(
+            ".rc-imageselect-desc-no-caption, "
+            ".rc-imageselect-desc, "
+            "div:has-text('Verification challenge expired'), "
+            "div:has-text('Check the checkbox again')"
+        )
+        if expired_el:
+            try:
+                text = await expired_el.inner_text()
+                if "expired" in text.lower() or "checkbox again" in text.lower():
+                    logger.info("EXPIRED CAPTCHA state detected: %s", text.strip())
+                    return True
+            except Exception:
+                pass
+
+        # Also check the anchor frame for the expired state
+        anchor_frame = None
+        for frame in page.frames:
+            if "recaptcha" in frame.url and "anchor" in frame.url:
+                anchor_frame = frame
+                break
+        if anchor_frame:
+            checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
+            if checkbox:
+                is_checked = await checkbox.get_attribute("aria-checked")
+                if is_checked == "false":
+                    # Checkbox unchecked — could be expired or never clicked.
+                    # Check if there's an expired message in the bframe.
+                    if bframe:
+                        expired_msg = await bframe.query_selector(
+                            "div:has-text('expired'), "
+                            "div:has-text('checkbox again')"
+                        )
+                        if expired_msg:
+                            logger.info(
+                                "EXPIRED CAPTCHA state detected (checkbox unchecked + expired message)."
+                            )
+                            return True
+    except Exception as e:
+        logger.warning("Error detecting expired CAPTCHA state: %s", e)
+
+    return False
+
+
+async def _count_challenge_images(page: Page) -> int:
+    """
+    Count the number of image tiles in the active reCAPTCHA challenge.
+
+    Returns the number of visible `.rc-imageselect-tile` elements in the
+    bframe. A valid challenge has either 9 (3x3) or 16 (4x4) images.
+    Returns 0 if no challenge is active or the frame is not found.
+    """
+    try:
+        bframe = await _find_recaptcha_frame(page, "bframe")
+        if not bframe:
+            return 0
+
+        tiles = await bframe.query_selector_all(".rc-imageselect-tile")
+        if not tiles:
+            return 0
+
+        # Count only visible tiles
+        visible_count = 0
+        for tile in tiles:
+            try:
+                if await tile.is_visible():
+                    visible_count += 1
+            except Exception:
+                pass
+        return visible_count
+    except Exception as e:
+        logger.warning("Error counting challenge images: %s", e)
+        return 0
+
+
+async def _wait_for_fresh_challenge(
+    page: Page,
+    behavior: HumanBehavior,
+    timeout: float = 30.0,
+) -> bool:
+    """
+    Reinitialize the CAPTCHA checkbox and wait for a fresh image challenge.
+
+    Handles the EXPIRED state by:
+      1. Cleaning up any leftover routes from previous solver attempts.
+      2. Re-clicking the reCAPTCHA checkbox to trigger a fresh challenge.
+      3. Waiting (up to `timeout` seconds) for a challenge with 9 or 16 images.
+
+    Returns True if a fresh challenge with 9/16 images is detected,
+    False if the timeout was reached without a valid challenge.
+    """
+    logger.info("Attempting to recover from expired CAPTCHA state...")
+
+    # Clean up any leftover routes from previous solver attempts
+    try:
+        await page.unroute_all(behavior="ignoreErrors")
+    except Exception:
+        pass
+
+    # Re-click the checkbox to trigger a fresh challenge
+    checkbox_ok = await ensure_captcha_checkbox(page)
+    if not checkbox_ok:
+        logger.warning("Could not re-click the reCAPTCHA checkbox.")
+
+    # Wait for a fresh challenge with 9 or 16 images
+    elapsed = 0.0
+    poll_interval = 1.0
+    while elapsed < timeout:
+        # Check if the CAPTCHA was cleared entirely
+        if captcha_cleared(page):
+            logger.info("CAPTCHA cleared during fresh-challenge wait.")
+            return True
+
+        image_count = await _count_challenge_images(page)
+        if image_count in (9, 16):
+            logger.info(
+                "Fresh challenge detected with %d images. Ready for YOLO solver.",
+                image_count,
+            )
+            return True
+
+        # If still expired, try re-clicking the checkbox again
+        if image_count == 0:
+            expired = await _detect_expired_state(page)
+            if expired:
+                logger.info("Still in expired state. Re-clicking checkbox...")
+                await ensure_captcha_checkbox(page)
+
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+
+    logger.warning(
+        "Timed out waiting for fresh CAPTCHA challenge after %.1f seconds.",
+        timeout,
+    )
+    return False
+
+
 async def solve_recaptcha_yolo(
     page: Page,
     behavior: HumanBehavior,
@@ -129,6 +283,15 @@ async def solve_recaptcha_yolo(
     Retries up to *max_attempts* times because Google sometimes keeps issuing
     new image grids ("Please try again.") even after a valid selection —
     a single pass through the solver is not always enough to clear it.
+
+    Before calling the recognizer, this function:
+      1. Detects the EXPIRED state ("Verification challenge expired" /
+         "Check the checkbox again") and recovers by re-clicking the checkbox
+         and waiting for a fresh challenge.
+      2. Verifies the image challenge actually contains 9 or 16 images.
+         If 0 images are detected, YOLO is NOT called and no retry loop
+         is entered — preventing the "Images amount must equal 9 or 16. Is: 0"
+         error loop.
 
     max_attempts defaults to behavior.max_yolo_attempts (random 3-10 per session).
     """
@@ -145,6 +308,71 @@ async def solve_recaptcha_yolo(
 
             # Human pause before clicking the checkbox
             await asyncio.sleep(behavior.delay("before_checkbox"))
+
+            # --- Detect EXPIRED state before calling YOLO ---
+            if await _detect_expired_state(page):
+                logger.warning(
+                    "CAPTCHA challenge is EXPIRED. Recovering before YOLO solve..."
+                )
+                # Clean up any leftover routes from previous attempts
+                try:
+                    await page.unroute_all(behavior="ignoreErrors")
+                except Exception:
+                    pass
+
+                # Reinitialize the checkbox and wait for a fresh challenge
+                recovered = await _wait_for_fresh_challenge(
+                    page, behavior, timeout=30.0
+                )
+                if not recovered:
+                    logger.warning(
+                        "Could not recover from expired CAPTCHA state. "
+                        "Returning False so manual fallback can take over."
+                    )
+                    return False
+
+                # If the CAPTCHA was cleared during recovery, we're done
+                if captcha_cleared(page):
+                    logger.info("CAPTCHA cleared during expired-state recovery!")
+                    return True
+
+            # --- Verify image challenge has 9 or 16 images before YOLO ---
+            image_count = await _count_challenge_images(page)
+            if image_count == 0:
+                logger.warning(
+                    "No active image challenge detected (0 images). "
+                    "Skipping YOLO solver to avoid the 'Images amount must equal "
+                    "9 or 16. Is: 0' error loop."
+                )
+                # Try to recover by re-clicking the checkbox and waiting
+                recovered = await _wait_for_fresh_challenge(
+                    page, behavior, timeout=30.0
+                )
+                if not recovered:
+                    logger.warning(
+                        "Could not obtain a fresh challenge with 9/16 images. "
+                        "Returning False so manual fallback can take over."
+                    )
+                    return False
+
+                if captcha_cleared(page):
+                    logger.info("CAPTCHA cleared during fresh-challenge recovery!")
+                    return True
+
+                # Re-count after recovery
+                image_count = await _count_challenge_images(page)
+                if image_count not in (9, 16):
+                    logger.warning(
+                        "Fresh challenge still has %d images (expected 9 or 16). "
+                        "Skipping YOLO solver.",
+                        image_count,
+                    )
+                    return False
+
+            logger.info(
+                "Image challenge verified: %d images detected. Starting YOLO solver.",
+                image_count,
+            )
 
             challenger = HumanizedAsyncChallenger(
                 page,
