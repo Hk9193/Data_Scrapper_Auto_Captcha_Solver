@@ -32,6 +32,49 @@ def captcha_cleared(page: Page) -> bool:
     return "/sorry/index" not in page.url
 
 
+async def ensure_captcha_checkbox(page: Page) -> bool:
+    """
+    Ensure the reCAPTCHA checkbox is checked.
+    Handles the 'Verification challenge expired' state where the checkbox
+    becomes unchecked and needs to be re-clicked.
+
+    Returns True if the checkbox was clicked successfully, False otherwise.
+    """
+    try:
+        anchor_frame = None
+        for frame in page.frames:
+            if "recaptcha" in frame.url and "anchor" in frame.url:
+                anchor_frame = frame
+                break
+
+        if not anchor_frame:
+            return False
+
+        checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
+        if not checkbox:
+            return False
+
+        is_checked = await checkbox.get_attribute("aria-checked")
+        if is_checked == "false":
+            logger.info("reCAPTCHA checkbox is unchecked. Clicking it...")
+            await checkbox.click()
+            await asyncio.sleep(2)
+            # Check if it triggered a challenge or cleared
+            is_checked = await checkbox.get_attribute("aria-checked")
+            if is_checked == "true":
+                logger.info("reCAPTCHA checkbox successfully checked!")
+                return True
+            else:
+                logger.info("reCAPTCHA checkbox clicked, challenge may have been triggered.")
+                return True
+        else:
+            logger.info("reCAPTCHA checkbox is already checked.")
+            return True
+    except Exception as e:
+        logger.warning("Error ensuring captcha checkbox: %s", e)
+        return False
+
+
 async def _find_recaptcha_frame(page: Page, frame_kind: str) -> Optional[object]:
     for _ in range(12):
         for frame in page.frames:

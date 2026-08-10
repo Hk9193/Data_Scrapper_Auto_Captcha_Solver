@@ -17,7 +17,7 @@ from playwright.async_api import (
     TimeoutError as PWTimeoutError,
 )
 
-from captcha_solver import auto_solve_captcha
+from captcha_solver import auto_solve_captcha, captcha_cleared, ensure_captcha_checkbox
 from config import (
     CAPTCHA_SOLVER,
     DELAY_MAX,
@@ -81,6 +81,104 @@ class GoogleScraper:
         await Stealth().apply_stealth_async(page)
         return page
 
+    async def _handle_captcha(self, page: Page) -> bool:
+        """
+        Handle Google CAPTCHA with retry logic.
+        Returns True if CAPTCHA was cleared, False if it could not be resolved.
+        """
+        MAX_CAPTCHA_ATTEMPTS = 5
+        MANUAL_WAIT_TIMEOUT = 30  # seconds to wait for manual solve before retrying auto
+
+        for attempt in range(1, MAX_CAPTCHA_ATTEMPTS + 1):
+            logger.info(
+                "CAPTCHA handling attempt %d/%d...",
+                attempt,
+                MAX_CAPTCHA_ATTEMPTS,
+            )
+
+            # First, ensure the checkbox is actually checked (handles "expired" state)
+            checkbox_checked = await ensure_captcha_checkbox(page)
+            if captcha_cleared(page):
+                logger.info("CAPTCHA cleared after checkbox interaction!")
+                return True
+
+            # Run automated solver
+            solved = await auto_solve_captcha(page, method=CAPTCHA_SOLVER)
+            if solved and captcha_cleared(page):
+                logger.info("CAPTCHA solved successfully by automated solver!")
+                return True
+
+            # If we're on the sorry page, try navigating to Google to trigger the checkbox
+            if "/sorry/index" in page.url:
+                logger.info("On Google CAPTCHA wall. Navigating to Google to trigger challenge...")
+                try:
+                    await page.goto(
+                        "https://www.google.com",
+                        wait_until="domcontentloaded",
+                        timeout=PAGE_LOAD_TIMEOUT,
+                    )
+                    await asyncio.sleep(2)
+                    if captcha_cleared(page):
+                        logger.info("Navigated away from CAPTCHA wall successfully!")
+                        return True
+                except Exception as e:
+                    logger.warning("Navigation attempt failed: %s", e)
+
+            # If automated solver failed, wait for manual solve with timeout
+            if attempt < MAX_CAPTCHA_ATTEMPTS:
+                logger.warning(
+                    "Automated solve attempt %d/%d failed. "
+                    "Waiting up to %d seconds for manual solve in the open browser...",
+                    attempt,
+                    MAX_CAPTCHA_ATTEMPTS,
+                    MANUAL_WAIT_TIMEOUT,
+                )
+
+                wait_elapsed = 0
+                while wait_elapsed < MANUAL_WAIT_TIMEOUT:
+                    if captcha_cleared(page):
+                        logger.info("CAPTCHA solved manually! Resuming...")
+                        return True
+                    
+                    # Check if the checkbox is still visible and clickable
+                    # (handles the "Verification challenge expired" case)
+                    try:
+                        anchor_frame = None
+                        for frame in page.frames:
+                            if "recaptcha" in frame.url and "anchor" in frame.url:
+                                anchor_frame = frame
+                                break
+                        if anchor_frame:
+                            checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
+                            if checkbox:
+                                is_checked = await checkbox.get_attribute("aria-checked")
+                                if is_checked == "false":
+                                    logger.info(
+                                        "Checkbox unchecked (expired). Re-clicking..."
+                                    )
+                                    await checkbox.click()
+                                    await asyncio.sleep(2)
+                    except Exception:
+                        pass
+
+                    await asyncio.sleep(3)
+                    wait_elapsed += 3
+
+                logger.warning(
+                    "Manual solve wait timed out (%d seconds). "
+                    "Retrying automated solver...",
+                    MANUAL_WAIT_TIMEOUT,
+                )
+            else:
+                logger.error(
+                    "All %d CAPTCHA handling attempts exhausted. "
+                    "Giving up on this page.",
+                    MAX_CAPTCHA_ATTEMPTS,
+                )
+                return False
+
+        return False
+
     async def search(self, query: str) -> List[Dict[str, str]]:
         all_results: List[Dict[str, str]] = []
         page = await self._new_page()
@@ -95,19 +193,21 @@ class GoogleScraper:
                 await page.wait_for_load_state("domcontentloaded")
 
             for page_num in range(MAX_PAGES_PER_QUERY):
-                if "/sorry/index" in page.url:
-                    logger.critical("GOOGLE CAPTCHA DETECTED! Running automated solver...")
-                    solved = await auto_solve_captcha(page, method=CAPTCHA_SOLVER)
-                    if not solved:
-                        logger.warning("Automated solve attempt finished. Waiting for manual solve in open browser...")
-                        while "/sorry/index" in page.url:
-                            await asyncio.sleep(3)
-                        logger.info("CAPTCHA solved! Resuming search...")
+                # Handle CAPTCHA if present
+                if "/sorry/index" in page.url or not captcha_cleared(page):
+                    logger.critical("GOOGLE CAPTCHA DETECTED! Running solver...")
+                    captcha_ok = await self._handle_captcha(page)
+                    if not captcha_ok:
+                        logger.error(
+                            "Could not resolve CAPTCHA for query '%s' page %d. "
+                            "Skipping remaining pages for this query.",
+                            query,
+                            page_num + 1,
+                        )
+                        break
 
                     # Wait for the page to finish navigating back to the search
-                    # results after the CAPTCHA is cleared. Without this, the next
-                    # extraction races the navigation and throws
-                    # "Execution context was destroyed, most likely because of a navigation".
+                    # results after the CAPTCHA is cleared.
                     await asyncio.sleep(2.5)
                     try:
                         await page.wait_for_load_state("domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)

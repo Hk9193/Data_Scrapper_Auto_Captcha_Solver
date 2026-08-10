@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+browser_profile/
 # Distribution / packaging
 .Python
 build/
@@ -49,3 +49,7 @@ venv.bak/
 *.swp
 *.swo
 .DS_Store
+
+
+browser_profile/Default/Cache/
+browser_profile/Default/Cache/**
