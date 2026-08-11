@@ -26,6 +26,20 @@ class BrowserDeadError(Exception):
     """Raised when the browser / context / page is closed or unreachable."""
 
 
+class CAPTCHABlockError(Exception):
+    """Raised when a query pass is interrupted by an unsolvable CAPTCHA.
+
+    The caller should mark the query PENDING, recreate the browser, and retry
+    the SAME query from the saved page — never skip it.
+    """
+
+
+class QueryIncompleteError(Exception):
+    """Raised when a query pass ends without completing (e.g. transient
+    network failure). The caller should retry the SAME query from the last
+    completed page."""
+
+
 # Classic Playwright closed-target messages (all flavours).
 _CLOSED_MARKERS = (
     "Target page, context or browser has been closed",
@@ -82,6 +96,12 @@ async def safe_close_context(context: BrowserContext) -> None:
     """Close *context* and its browser ignoring errors."""
     if context is None:
         return
+    try:
+        browser = context.browser
+        if browser is not None:
+            await browser.close()
+    except Exception as exc:
+        logger.debug("Ignored error while closing browser: %s", exc)
     try:
         await context.close()
     except Exception as exc:

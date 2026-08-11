@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import re
+import shutil
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
@@ -18,17 +19,25 @@ from playwright.async_api import (
     TimeoutError as PWTimeoutError,
 )
 
-from captcha_solver import auto_solve_captcha, captcha_cleared, ensure_captcha_checkbox
+from captcha_solver import (
+    active_image_challenge_present,
+    auto_solve_captcha,
+    captcha_cleared,
+    ensure_captcha_checkbox,
+)
 from config import (
+    BROWSER_RECYCLE_QUERIES,
     CAPTCHA_COOLDOWN_SECONDS,
     CAPTCHA_SOLVER,
     CONTINUOUS_MODE,
+    CYCLE_BLOCKED_COOLDOWN_SECONDS,
     CYCLE_RESTART_DELAY,
     DELAY_MAX,
     DELAY_MIN,
     HEADLESS,
     MAX_CAPTCHA_SOLVE_SECONDS,
     MAX_PAGES_PER_QUERY,
+    MAX_QUERY_CAPTCHA_RETRIES,
     MAX_RETRIES,
     MAX_TABS,
     PAGE_LOAD_TIMEOUT,
@@ -46,6 +55,9 @@ from logger_setup import setup_logger
 from playwright_stealth import Stealth
 from recovery import (
     BrowserDeadError,
+    CAPTCHABlockError,
+    QueryIncompleteError,
+    context_alive,
     is_closed_error,
     safe_close_context,
     safe_close_page,
@@ -84,12 +96,29 @@ class ScrapedRecord:
         }
 
 
+@dataclass
+class QueryProgress:
+    """Resumable state for one query across CAPTCHA / browser recoveries.
+
+    The query is NOT advanced to the next one until 'completed' is True.
+    'start_page' is the 0-based page to continue from (the page where the last
+    CAPTCHA / failure occurred), so we resume the SAME query at the correct
+    page instead of restarting or skipping it.
+    """
+    query: str = ""
+    start_page: int = 0          # 0-based page to resume from
+    recovery_attempts: int = 0   # total recovery attempts for this query
+    completed: bool = False
+
+
 class GoogleScraper:
     def __init__(self, context: BrowserContext) -> None:
         self.context = context
-        # Set True by search() when the last query was blocked by an
-        # unsolvable CAPTCHA — lets the orchestrator relaunch the browser.
-        self.captcha_blocked = False
+        # ⟶ CAPTCHA / resume state for the CURRENT search() call ⟵
+        self.captcha_blocked = False     # True if a CAPTCHA could not be solved
+        self.captcha_page_num = 0        # 0-based page where the CAPTCHA blocked
+        self.completed_pages = 0         # # of pages fully extracted this pass
+        self.search_completed = False    # True when the pass reached the last page
 
     async def _new_page(self) -> Page:
         page = await self.context.new_page()
@@ -119,6 +148,34 @@ class GoogleScraper:
         if timeout_seconds is None:
             timeout_seconds = MAX_CAPTCHA_SOLVE_SECONDS
         deadline = time.monotonic() + timeout_seconds
+
+        # ── ACTIVE image challenge already on screen: do NOT auto-solve or
+        # refresh/reinitialize it. Pause and let the existing manual CAPTCHA
+        # fallback handle the visible challenge, then resume the SAME
+        # query/page. The active challenge is left untouched. ──
+        if await active_image_challenge_present(page):
+            logger.info("ACTIVE IMAGE CAPTCHA DETECTED → WAITING FOR COMPLETION")
+            wait_elapsed = 0.0
+            poll = 2.0
+            while wait_elapsed < timeout_seconds:
+                if time.monotonic() >= deadline:
+                    break
+                if captcha_cleared(page):
+                    logger.info("CAPTCHA COMPLETED → RESUMING QUERY")
+                    return True
+                try:
+                    await page.wait_for_timeout(poll * 1000)
+                except Exception as exc:
+                    if is_closed_error(exc):
+                        raise BrowserDeadError(str(exc)) from exc
+                    pass
+                wait_elapsed += poll
+            logger.warning(
+                "Active image CAPTCHA not completed within the %.0fs budget. "
+                "The query/page stays PENDING and will be resumed on retry.",
+                timeout_seconds,
+            )
+            return False
 
         for attempt in range(1, MAX_CAPTCHA_ATTEMPTS + 1):
             if time.monotonic() >= deadline:
@@ -242,9 +299,74 @@ class GoogleScraper:
 
         return False
 
-    async def search(self, query: str) -> List[Dict[str, str]]:
+    async def _ensure_no_captcha(self, page: Page, query: str, page_num: int) -> bool:
+        """Return True if the current page is free of a CAPTCHA (or it was
+        solved). Return False if the CAPTCHA could not be resolved — the query
+        must be marked PENDING and retried from *page_num*.
+
+        Note: this does NOT decide to skip the query. The caller keeps the
+        query PENDING and resumes it from the same page after recovery.
+        """
+        # Trigger CAPTCHA handling if:
+        #  - we are on the /sorry/index wall, OR
+        #  - the URL says the CAPTCHA is uncleared, OR
+        #  - an ACTIVE image challenge (e.g. "Select all images with
+        #    crosswalks" / "Please select all matching images.") is already
+        #    displayed, even if it is rendered inline over a normal /search URL.
+        if (
+            "/sorry/index" in page.url
+            or not captcha_cleared(page)
+            or await active_image_challenge_present(page)
+        ):
+            logger.critical("GOOGLE CAPTCHA DETECTED! Running solver...")
+            captcha_ok = await self._handle_captcha(page)
+            if not captcha_ok:
+                logger.error(
+                    "Could not resolve CAPTCHA on query '%s' page %d. "
+                    "Query will be marked PENDING and retried from page %d.",
+                    query,
+                    page_num + 1,
+                    page_num + 1,
+                )
+                return False
+
+            # Wait for the page to finish navigating back to the search results
+            # after the CAPTCHA is cleared.
+            await asyncio.sleep(2.5)
+            try:
+                await page.wait_for_load_state(
+                    "domcontentloaded", timeout=PAGE_LOAD_TIMEOUT
+                )
+            except Exception:
+                pass
+        return True
+
+    async def search(
+        self,
+        query: str,
+        start_page: int = 0,
+        page_callback=None,
+    ) -> List[Dict[str, str]]:
+        """
+        Search Google for *query*, extracting results from *start_page* onward
+        (0-based). If *start_page* > 0 the pass first advances through earlier
+        pages so the SAME page is resumed (e.g. page 5 after a page-5 CAPTCHA)
+        instead of restarting the whole query.
+
+        After each page is extracted, *page_callback(results, page_num) is
+        awaited so the caller can process + save results incrementally. This is
+        what preserves already-collected results across CAPTCHA blocks and
+        browser recreations (and prevents duplicates on retry).
+
+        Returns the list of all results extracted in this pass.
+        Sets captcha_blocked / captcha_page_num / completed_pages /
+        search_completed for the caller to reason about resumption.
+        """
         all_results: List[Dict[str, str]] = []
         self.captcha_blocked = False
+        self.captcha_page_num = start_page
+        self.completed_pages = start_page
+        self.search_completed = False
         page = await self._new_page()
 
         try:
@@ -267,42 +389,46 @@ class GoogleScraper:
                     raise BrowserDeadError(str(exc)) from exc
                 raise  # re-raise transient network errors for the outer handler
 
-            for page_num in range(MAX_PAGES_PER_QUERY):
-                # Handle CAPTCHA if present
-                if "/sorry/index" in page.url or not captcha_cleared(page):
-                    logger.critical("GOOGLE CAPTCHA DETECTED! Running solver...")
-                    captcha_ok = await self._handle_captcha(page)
-                    if not captcha_ok:
-                        logger.error(
-                            "Could not resolve CAPTCHA for query '%s' page %d. "
-                            "Skipping remaining pages for this query.",
-                            query,
-                            page_num + 1,
-                        )
-                        self.captcha_blocked = True
-                        break
+            current_page = 0  # 0-based index of the page we are on / about to extract
 
-                    # Wait for the page to finish navigating back to the search
-                    # results after the CAPTCHA is cleared.
-                    await asyncio.sleep(2.5)
-                    try:
-                        await page.wait_for_load_state(
-                            "domcontentloaded", timeout=PAGE_LOAD_TIMEOUT
-                        )
-                    except Exception:
-                        pass
+            # ── Advance to the resume page (start_page) if we are recovering ──
+            while current_page < start_page:
+                if not await self._ensure_no_captcha(page, query, current_page):
+                    self.captcha_blocked = True
+                    self.captcha_page_num = current_page
+                    return all_results
+                next_btn = await page.query_selector("a#pnnext")
+                if not next_btn:
+                    break  # no more pages; continue extracting from here
+                await random_delay(DELAY_MIN, DELAY_MAX)
+                await next_btn.click()
+                await page.wait_for_load_state("domcontentloaded")
+                current_page += 1
+
+            # ── Extract pages (resuming at current_page) ──
+            while current_page < MAX_PAGES_PER_QUERY:
+                if not await self._ensure_no_captcha(page, query, current_page):
+                    self.captcha_blocked = True
+                    self.captcha_page_num = current_page
+                    return all_results
 
                 results = await self._extract_results(page, query)
                 all_results.extend(results)
+                if page_callback is not None:
+                    await page_callback(results, current_page)
+                self.completed_pages = current_page + 1
+                current_page += 1
 
-                next_btn = await page.query_selector("a#pnnext")
-                if next_btn and page_num < MAX_PAGES_PER_QUERY - 1:
-                    await random_delay(DELAY_MIN, DELAY_MAX)
-                    await next_btn.click()
-                    await page.wait_for_load_state("domcontentloaded")
-                else:
+                if current_page >= MAX_PAGES_PER_QUERY:
                     break
+                next_btn = await page.query_selector("a#pnnext")
+                if not next_btn:
+                    break
+                await random_delay(DELAY_MIN, DELAY_MAX)
+                await next_btn.click()
+                await page.wait_for_load_state("domcontentloaded")
 
+            self.search_completed = True
         except BrowserDeadError:
             raise
         except Exception as exc:
@@ -490,57 +616,153 @@ class DataScraper:
     # ── Cycle orchestrator ──────────────────────────────────────────────────
 
     async def _run_cycle(self) -> None:
-        """One full pass over SEARCH_QUERIES with a fresh browser context."""
+        """One full pass over SEARCH_QUERIES with a fresh browser context.
+
+        A query is retried (SAME query) after every CAPTCHA / browser-death /
+        timeout / incomplete failure until it either completes or reaches the
+        bounded retry limit. The query index ONLY advances after the current
+        query actually completes (or is permanently abandoned at the limit), so
+        a CAPTCHA can never silently skip a query.
+        """
         async with async_playwright() as pw:
             context: Optional[BrowserContext] = None
             google_scraper: Optional[GoogleScraper] = None
+            queries_done = 0
+            all_queries_blocked = True
             try:
                 context = await self._launch_context(pw)
                 google_scraper = GoogleScraper(context)
                 logger.info("Browser context ready. Processing queries...")
 
-                for query in SEARCH_QUERIES:
+                # Index-based loop: qi only moves forward once a query is done.
+                for qi in range(len(SEARCH_QUERIES)):
+                    query = SEARCH_QUERIES[qi]
+                    progress = QueryProgress(query=query, start_page=0)
+
+                    # Periodic browser recycling: prevents memory/handle leaks
+                    # from accumulating over hours of continuous operation.
+                    if (
+                        BROWSER_RECYCLE_QUERIES
+                        and queries_done > 0
+                        and queries_done % BROWSER_RECYCLE_QUERIES == 0
+                    ):
+                        logger.info(
+                            "Recycling browser after %d query passes to prevent leaks.",
+                            queries_done,
+                        )
+                        await safe_close_context(context)
+                        context = None
+                        google_scraper = None
+
                     if context is None:
-                        logger.warning("Context was lost; relaunching browser.")
                         context = await self._launch_context(pw)
                         google_scraper = GoogleScraper(context)
 
+                    while not progress.completed:
+                        # Proactive liveness check: if the context is dead,
+                        # recreate it before burning a 15-minute timeout.
+                        if context is not None and not context_alive(context):
+                            logger.warning("Context is dead; relaunching browser.")
+                            await safe_close_context(context)
+                            context = None
+                            google_scraper = None
+
+                        if context is None:
+                            context = await self._launch_context(pw)
+                            google_scraper = GoogleScraper(context)
+
+                        reason: Optional[str] = None  # captcha | timeout | dead | ...
+                        try:
+                            await asyncio.wait_for(
+                                self._process_one_query(google_scraper, context, progress),
+                                timeout=QUERY_PROCESS_TIMEOUT_SECONDS,
+                            )
+                            # Normal return ⇒ the query fully completed.
+                            progress.completed = True
+                            all_queries_blocked = False
+                            break
+                        except CAPTCHABlockError as exc:
+                            reason = "captcha"
+                            logger.warning(
+                                "CAPTCHA block on query '%s': %s",
+                                query, exc,
+                            )
+                        except asyncio.TimeoutError:
+                            reason = "timeout"
+                            logger.error(
+                                "Query '%s' exceeded the %ds processing ceiling. "
+                                "Marking PENDING and retrying the SAME query.",
+                                query,
+                                QUERY_PROCESS_TIMEOUT_SECONDS,
+                            )
+                        except BrowserDeadError as exc:
+                            reason = "dead"
+                            logger.error(
+                                "Browser died while processing query '%s': %s. "
+                                "Marking PENDING and retrying the SAME query.",
+                                query, exc,
+                            )
+                        except QueryIncompleteError as exc:
+                            reason = "incomplete"
+                            logger.warning(
+                                "Query '%s' pass incomplete: %s. "
+                                "Retrying the SAME query from the saved page.",
+                                query, exc,
+                            )
+                        except Exception as exc:
+                            reason = "error"
+                            logger.exception(
+                                "Unexpected error while processing query '%s': %s",
+                                query, exc,
+                            )
+
+                        # ── Bounded recovery: retry the SAME query ──
+                        progress.recovery_attempts += 1
+                        self._flush_records()
+                        await safe_close_context(context)
+                        context = await self._launch_context(pw)
+                        google_scraper = GoogleScraper(context)
+
+                        if progress.recovery_attempts >= MAX_QUERY_CAPTCHA_RETRIES:
+                            if reason == "captcha":
+                                logger.error(
+                                    "Query permanently blocked after %d CAPTCHA "
+                                    "recovery attempts: '%s'",
+                                    progress.recovery_attempts, query,
+                                )
+                            else:
+                                logger.error(
+                                    "Query gave up after %d recovery attempts "
+                                    "('%s'): %s",
+                                    progress.recovery_attempts, query, reason,
+                                )
+                            break  # abandon this query, move to the next one
+
+                        if reason == "captcha":
+                            await asyncio.sleep(CAPTCHA_COOLDOWN_SECONDS)
+
+                    if progress.completed:
+                        queries_done += 1
+                    logger.info(
+                        "Finished query %d/%d: '%s' (completed=%s)",
+                        qi + 1, len(SEARCH_QUERIES), query,
+                        progress.completed,
+                    )
+
+                # If every query in the cycle was blocked/could not complete,
+                # pause longer before restarting the cycle. This gives IP/UA
+                # rotation / cooldown a chance so the next cycle is not just
+                # another immediate blocked pass.
+                if all_queries_blocked:
+                    logger.warning(
+                        "All queries were blocked in this cycle. Pausing %.0fs "
+                        "before the next cycle.",
+                        CYCLE_BLOCKED_COOLDOWN_SECONDS,
+                    )
                     try:
-                        await asyncio.wait_for(
-                            self._process_one_query(google_scraper, context, query),
-                            timeout=QUERY_PROCESS_TIMEOUT_SECONDS,
-                        )
-                    except asyncio.TimeoutError:
-                        # A Playwright call hung (browser half-dead). Force a
-                        # clean browser recreation and move on — never freeze.
-                        logger.error(
-                            "Query '%s' exceeded the %ds processing ceiling. "
-                            "Recreating browser and continuing.",
-                            query,
-                            QUERY_PROCESS_TIMEOUT_SECONDS,
-                        )
-                        self._flush_records()
-                        await safe_close_context(context)
-                        context = await self._launch_context(pw)
-                        google_scraper = GoogleScraper(context)
-                    except BrowserDeadError as exc:
-                        logger.error(
-                            "Browser died while processing query '%s': %s. "
-                            "Recreating browser and continuing.",
-                            query,
-                            exc,
-                        )
-                        self._flush_records()
-                        await safe_close_context(context)
-                        context = await self._launch_context(pw)
-                        google_scraper = GoogleScraper(context)
-                    except Exception as exc:
-                        logger.exception(
-                            "Unexpected error while processing query '%s': %s",
-                            query,
-                            exc,
-                        )
-                        self._flush_records()
+                        await asyncio.sleep(CYCLE_BLOCKED_COOLDOWN_SECONDS)
+                    except asyncio.CancelledError:
+                        pass
             finally:
                 await safe_close_context(context)
 
@@ -548,6 +770,10 @@ class DataScraper:
         """Launch a persistent browser context, retrying on profile-lock and
         falling back to a fresh profile directory if the main one is stuck."""
         base_dir = os.path.join(os.getcwd(), "browser_profile")
+
+        # Clean up stale fallback profiles from earlier cycles.
+        self._cleanup_stale_fallback_profiles()
+
         launch_kwargs = dict(
             user_data_dir=base_dir,
             headless=HEADLESS,
@@ -586,47 +812,89 @@ class DataScraper:
         launch_kwargs["user_data_dir"] = alt_dir
         return await pw.chromium.launch_persistent_context(**launch_kwargs)
 
+    def _cleanup_stale_fallback_profiles(self) -> None:
+        """Delete leftover browser_profile_<timestamp>/ fallback directories."""
+        try:
+            for entry in os.listdir(os.getcwd()):
+                if not entry.startswith("browser_profile_"):
+                    continue
+                path = os.path.join(os.getcwd(), entry)
+                if os.path.isdir(path):
+                    try:
+                        shutil.rmtree(path, ignore_errors=True)
+                        if not os.path.isdir(path):
+                            logger.info("Removed stale fallback profile: %s", entry)
+                    except Exception as exc:
+                        logger.debug("Could not remove stale profile %s: %s", entry, exc)
+        except Exception:
+            pass
+
     async def _process_one_query(
         self,
         google_scraper: GoogleScraper,
         context: BrowserContext,
-        query: str,
+        progress: QueryProgress,
     ) -> None:
-        """Search one query, extract emails, optionally visit URLs, save."""
-        google_scraper.captcha_blocked = False
-        results = await google_scraper.search(query)
-        logger.info("Query '%s' returned %d results.", query, len(results))
+        """Process one query pass starting at progress.start_page.
+
+        Every extracted page is processed + saved immediately through the
+        page_callback, so results already collected are preserved even if the
+        pass is interrupted. On interruption this raises:
+          - CAPTCHABlockError     → caller retries the SAME query from the
+                                    page where the CAPTCHA appeared,
+          - QueryIncompleteError  → caller retries the SAME query from the last
+                                    completed page,
+          - BrowserDeadError      → caller recreates the browser and retries.
+
+        On a normal return the query is fully complete.
+        """
+        async def page_callback(results: List[Dict[str, str]], page_num: int) -> None:
+            # Process + save each page as soon as it is extracted so no
+            # collected data is lost on a later block/crash. Global-seen
+            # dedup ensures a re-scraped page never duplicates records.
+            for target in results:
+                self._process_target(target)
+
+            if VISIT_URLS:
+                for target in results:
+                    try:
+                        await self._visit_and_extract(context, target)
+                    except Exception as exc:
+                        logger.warning("Visit task failed for %s: %s",
+                                       target.get("url", "?"), exc)
+
+            self._flush_records(query=progress.query)
+
+        results = await google_scraper.search(
+            progress.query,
+            start_page=progress.start_page,
+            page_callback=page_callback,
+        )
+        logger.info("Query '%s' search pass returned %d result(s).",
+                    progress.query, len(results))
 
         if google_scraper.captcha_blocked:
-            logger.warning(
-                "Query '%s' was blocked by an unsolvable CAPTCHA. "
-                "Taking a %.0fs cooldown, then relaunching the browser for a "
-                "fresh session before continuing with the next query.",
-                query,
-                CAPTCHA_COOLDOWN_SECONDS,
-            )
-            self._flush_records()
-            await asyncio.sleep(CAPTCHA_COOLDOWN_SECONDS)
-            # Signal the orchestrator to recreate the browser context.
-            raise BrowserDeadError(
-                f"CAPTCHA-blocked query: '{query[:60]}' — forcing browser recreation"
+            # Pages completed before the block were already processed + saved
+            # by the callback. Keep the query PENDING and resume from the page
+            # where the CAPTCHA appeared (not from page 1, not the next query).
+            progress.start_page = google_scraper.captcha_page_num
+            raise CAPTCHABlockError(
+                f"CAPTCHA blocked query '{progress.query[:60]}' at page "
+                f"{progress.start_page + 1}"
             )
 
-        # Extract emails from snippets (always)
-        for target in results:
-            self._process_target(target)
+        if not google_scraper.search_completed:
+            # Transient failure (e.g. network). Resume from the last completed
+            # page so we never skip or lose already-collected results.
+            progress.start_page = google_scraper.completed_pages
+            raise QueryIncompleteError(
+                f"Query '{progress.query[:60]}' pass incomplete after "
+                f"{progress.start_page} page(s)"
+            )
 
-        # Optionally visit URLs for deeper extraction
-        if VISIT_URLS:
-            for target in results:
-                try:
-                    await self._visit_and_extract(context, target)
-                except Exception as exc:
-                    logger.warning("Visit task failed for %s: %s",
-                                   target.get("url", "?"), exc)
-
-        # Save incrementally after each query to avoid data loss
-        self._flush_records(query=query)
+        # Query fully completed — reset resume point.
+        progress.start_page = 0
+        self._flush_records(query=progress.query)
 
     def _flush_records(self, query: str = "") -> None:
         """Persist any pending records to CSV/Sheets and clear the buffer."""

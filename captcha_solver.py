@@ -93,6 +93,26 @@ async def _find_recaptcha_frame(page: Page, frame_kind: str) -> Optional[object]
     return None
 
 
+def _peek_recaptcha_frame(page: Page, frame_kind: str) -> Optional[object]:
+    """Non-blocking, single-scan recaptcha-frame lookup (no polling).
+
+    Used by lightweight detectors that run on every page (e.g. to decide
+    whether an active challenge is present) where a 6 s poll on pages that
+    contain no reCAPTCHA would be far too slow.
+    """
+    try:
+        for frame in page.frames:
+            try:
+                if "recaptcha" in frame.url and frame_kind in frame.url:
+                    return frame
+            except Exception:
+                continue
+    except Exception as e:
+        if is_closed_error(e):
+            raise BrowserDeadError(str(e)) from e
+    return None
+
+
 async def _challenge_has_error(bframe) -> bool:
     """Detect 'Please try again' / incorrect-selection messages on the image grid."""
     try:
@@ -224,6 +244,70 @@ async def _count_challenge_images(page: Page) -> int:
         return 0
 
 
+async def active_image_challenge_present(page: Page) -> bool:
+    """
+    Return True if an ACTIVE (non-expired) image CAPTCHA challenge is
+    currently displayed — e.g. "Select all images with crosswalks" with a
+    3x3/4x4 grid, or the "Please select all matching images." state.
+
+    This is used to AVOID refreshing/reinitializing a challenge that is
+    already presented: we must not re-click the checkbox or reload the grid,
+    because that would destroy the very challenge a human is meant to solve.
+
+    It is NOT the expired state ("Verification challenge expired. Check the
+    checkbox again.") — that state intentionally returns False so the normal
+    expired-recovery path can reinitialize it.
+
+    Note: this uses a non-blocking frame peek so it is cheap to call on every
+    page (e.g. inside _ensure_no_captcha) with no reCAPTCHA present.
+    """
+    try:
+        bframe = _peek_recaptcha_frame(page, "bframe")
+        if bframe is None:
+            return False
+
+        # A live 3x3 / 4x4 grid means an active challenge is up. The grid
+        # counter finds the (now-present) frame on its first pass.
+        image_count = await _count_challenge_images(page)
+
+        # 1) A live 3x3 / 4x4 grid means an active challenge is up.
+        if image_count in (9, 16):
+            return True
+
+        # 2) The challenge prompt/descriptor is the strongest signal for an
+        #    active grid. Active = "Select all images with crosswalks" /
+        #    "Please select all matching images." — NOT the expired message.
+        prompt = await bframe.query_selector(
+            ".rc-imageselect-desc-no-caption, "
+            ".rc-imageselect-desc, "
+            ".rc-imageselect-instructions, "
+            "div:has-text('Please select all matching images')"
+        )
+        if prompt:
+            try:
+                text = (await prompt.inner_text() or "").strip().lower()
+            except Exception:
+                text = ""
+            if (
+                text
+                and "expired" not in text
+                and "checkbox again" not in text
+                and (
+                    "select all" in text
+                    or "matching images" in text
+                    or image_count > 0
+                )
+            ):
+                logger.info("Active image challenge prompt detected: %s", text)
+                return True
+    except Exception as e:
+        if is_closed_error(e):
+            raise BrowserDeadError(str(e)) from e
+        logger.warning("Error detecting active image challenge: %s", e)
+
+    return False
+
+
 async def _wait_for_fresh_challenge(
     page: Page,
     behavior: HumanBehavior,
@@ -323,6 +407,17 @@ async def solve_recaptcha_yolo(
 
             # Human pause before clicking the checkbox
             await asyncio.sleep(behavior.delay("before_checkbox"))
+
+            # --- If an ACTIVE image challenge is already displayed, do NOT
+            # refresh / reinitialize / re-solve it. Leave it for the existing
+            # manual CAPTCHA fallback, which preserves the query/page state. ---
+            if await active_image_challenge_present(page):
+                logger.info(
+                    "ACTIVE IMAGE CAPTCHA DETECTED (active challenge present). "
+                    "Skipping automated solve to avoid refreshing an active "
+                    "challenge."
+                )
+                return False
 
             # --- Detect EXPIRED state before calling YOLO ---
             if await _detect_expired_state(page):

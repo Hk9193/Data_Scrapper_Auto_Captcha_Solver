@@ -5,23 +5,6 @@ All tunable settings, search queries, and credentials live here.
 
 # ─── Search Queries ────────────────────────────────────────────────────────────
 SEARCH_QUERIES = [
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jabalpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gwalior") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ujjain") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dewas") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ratlam") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Satna") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Mumbai") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Pune") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nagpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nashik") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Thane") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Navi Mumbai") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aurangabad" OR "Chhatrapati Sambhajinagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kolhapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Solapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Amravati") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sangli") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bhubaneswar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
@@ -92,25 +75,6 @@ SEARCH_QUERIES = [
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aligarh") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Saharanpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dehradun") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haridwar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haldwani") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rudrapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Roorkee") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rishikesh") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kashipur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ranchi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jamshedpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dhanbad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bokaro") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("New Delhi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Delhi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Chandigarh") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Srinagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jammu") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Puducherry" OR Pondicherry) (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 ]
 
 # ─── Pagination ────────────────────────────────────────────────────────────────
@@ -160,14 +124,30 @@ CONTINUOUS_MODE = True
 MAX_CAPTCHA_SOLVE_SECONDS = 240
 
 # Pause (seconds) after a query is blocked by an unsolvable CAPTCHA, before the
-# browser is relaunched and we continue with the next query.
+# browser is relaunched and we continue with the SAME query.
 CAPTCHA_COOLDOWN_SECONDS = 20
+
+# Maximum number of recovery attempts for a SINGLE query before we give up on
+# it and move on to the next query. Prevents a permanently broken query from
+# looping forever, while still retrying the SAME query (not skipping it) after
+# every CAPTCHA / browser / timeout recovery.
+MAX_QUERY_CAPTCHA_RETRIES = 5
 
 # Absolute ceiling (seconds) for processing ONE query (search + visit + save).
 # Wraps the whole query in asyncio.wait_for so that a Playwright call which
 # hangs forever waiting on a dead browser can never freeze the process — it is
 # forced to raise, we recreate the browser, and continue.
 QUERY_PROCESS_TIMEOUT_SECONDS = 900
+
+# Recycle the browser/context after this many query passes to prevent
+# memory/handle leaks that accumulate over hours of continuous operation.
+# Set to 0 to disable recycling (legacy behaviour).
+BROWSER_RECYCLE_QUERIES = 10
+
+# Extra pause (seconds) after a full cycle in which every query hit a
+# CAPTCHA/blocked wall — gives IP/UA rotation a chance before the next
+# cycle starts over with the same likely-blocked session.
+CYCLE_BLOCKED_COOLDOWN_SECONDS = 60
 
 # Delay (seconds) between continuous-mode cycles after a graceful cycle end.
 CYCLE_RESTART_DELAY = 10
