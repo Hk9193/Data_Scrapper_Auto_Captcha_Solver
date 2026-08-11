@@ -5,21 +5,116 @@ All tunable settings, search queries, and credentials live here.
 
 # ─── Search Queries ────────────────────────────────────────────────────────────
 SEARCH_QUERIES = [
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Langley") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jabalpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gwalior") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ujjain") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dewas") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ratlam") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Satna") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Richmond Hill") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Mumbai") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Pune") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nagpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nashik") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Thane") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Navi Mumbai") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aurangabad" OR "Chhatrapati Sambhajinagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kolhapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Solapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Amravati") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sangli") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bhubaneswar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Cuttack") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rourkela") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Berhampur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sambalpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Balasore") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Puri") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Oakville") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ludhiana") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Amritsar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jalandhar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Mohali") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Patiala") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bathinda") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Pathankot") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Burlington") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jaipur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jodhpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Udaipur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kota") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ajmer") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bikaner") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Alwar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bhiwadi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ajax") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Chennai") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Coimbatore") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Madurai") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tiruchirappalli" OR Trichy) (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Salem") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tiruppur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Erode") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Vellore") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Thoothukudi" OR Tuticorin) (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tirunelveli") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Hosur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Whitby") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")'
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Hyderabad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Warangal") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nizamabad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Karimnagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Khammam") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ramagundam") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kolkata") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Siliguri") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Asansol") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Durgapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Howrah") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kharagpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bardhaman") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haldia") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lucknow") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Noida") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ghaziabad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kanpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Agra") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Varanasi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Prayagraj") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Meerut") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bareilly") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gorakhpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Mathura") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Moradabad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aligarh") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Saharanpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dehradun") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haridwar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haldwani") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rudrapur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Roorkee") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rishikesh") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kashipur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ranchi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jamshedpur") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dhanbad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bokaro") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("New Delhi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Delhi") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Chandigarh") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Srinagar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jammu") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Puducherry" OR Pondicherry) (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 ]
 
 # ─── Pagination ────────────────────────────────────────────────────────────────
-MAX_PAGES_PER_QUERY = 10       # Google pages to crawl per query
+MAX_PAGES_PER_QUERY = 15       # Google pages to crawl per query
 RESULTS_PER_PAGE    = 20       # Standard Google results per page
 
 # ─── Scraping Strategy ─────────────────────────────────────────────────────────
@@ -44,7 +139,38 @@ HEADLESS = False   # Set True for server / CI runs
 # "yolo"            — YOLOv8 image challenge only (recognizer)
 # "audio"           — audio challenge + speech-to-text only
 # "yolo_then_audio" — YOLO first, audio fallback (recommended)
-CAPTCHA_SOLVER = "yolo"
+#
+# NOTE: keep "yolo_then_audio" so an unsolvable image grid has a second,
+# independent solution path. This is a key part of ensuring a CAPTCHA
+# can never permanently block the scraper.
+CAPTCHA_SOLVER = "yolo_then_audio"
+
+# ─── Reliability / 24-7 Operation ──────────────────────────────────────────────
+# These settings make the scraper run continuously until manually stopped, and
+# guarantee that a hung browser / unsolvable CAPTCHA can NOT permanently stop it.
+
+# Run forever (restart cycles until the process is manually stopped / Ctrl+C).
+# Set False to run a single pass over SEARCH_QUERIES (legacy behaviour).
+CONTINUOUS_MODE = True
+
+# Hard wall-clock budget (seconds) that a SINGLE CAPTCHA-solving session may
+# consume before we give up on it, take a cooldown, relaunch the browser for a
+# fresh session/IP, and move on to the next query. Prevents the hours-long
+# "death spiral" seen in the logs (each YOLO attempt alone was ~3–10 min).
+MAX_CAPTCHA_SOLVE_SECONDS = 240
+
+# Pause (seconds) after a query is blocked by an unsolvable CAPTCHA, before the
+# browser is relaunched and we continue with the next query.
+CAPTCHA_COOLDOWN_SECONDS = 20
+
+# Absolute ceiling (seconds) for processing ONE query (search + visit + save).
+# Wraps the whole query in asyncio.wait_for so that a Playwright call which
+# hangs forever waiting on a dead browser can never freeze the process — it is
+# forced to raise, we recreate the browser, and continue.
+QUERY_PROCESS_TIMEOUT_SECONDS = 900
+
+# Delay (seconds) between continuous-mode cycles after a graceful cycle end.
+CYCLE_RESTART_DELAY = 10
 
 # ─── Proxy / VPN ───────────────────────────────────────────────────────────────
 # Leave PROXY_SERVER empty to use your system VPN / direct connection.

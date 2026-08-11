@@ -24,6 +24,7 @@ from typing import Optional
 from playwright.async_api import Page
 
 from human_behavior import HumanBehavior, HumanizedAsyncChallenger
+from recovery import BrowserDeadError, is_closed_error
 
 logger = logging.getLogger("scraper")
 
@@ -71,15 +72,23 @@ async def ensure_captcha_checkbox(page: Page) -> bool:
             logger.info("reCAPTCHA checkbox is already checked.")
             return True
     except Exception as e:
+        if is_closed_error(e):
+            # Never spin on a dead browser — let the caller recreate it.
+            raise BrowserDeadError(str(e)) from e
         logger.warning("Error ensuring captcha checkbox: %s", e)
         return False
 
 
 async def _find_recaptcha_frame(page: Page, frame_kind: str) -> Optional[object]:
     for _ in range(12):
-        for frame in page.frames:
-            if "recaptcha" in frame.url and frame_kind in frame.url:
-                return frame
+        try:
+            for frame in page.frames:
+                if "recaptcha" in frame.url and frame_kind in frame.url:
+                    return frame
+        except Exception as e:
+            if is_closed_error(e):
+                raise BrowserDeadError(str(e)) from e
+            # transient frame error — keep polling
         await asyncio.sleep(0.5)
     return None
 
@@ -114,7 +123,9 @@ async def _click_reload_button(page: Page, behavior: HumanBehavior) -> None:
             await reload_btn.click()
             # Wait a random duration after reload before solving again
             await asyncio.sleep(behavior.delay("after_reload"))
-    except Exception:
+    except Exception as e:
+        if is_closed_error(e):
+            raise BrowserDeadError(str(e)) from e
         pass
 
 
@@ -173,6 +184,8 @@ async def _detect_expired_state(page: Page) -> bool:
                             )
                             return True
     except Exception as e:
+        if is_closed_error(e):
+            raise BrowserDeadError(str(e)) from e
         logger.warning("Error detecting expired CAPTCHA state: %s", e)
 
     return False
@@ -205,6 +218,8 @@ async def _count_challenge_images(page: Page) -> int:
                 pass
         return visible_count
     except Exception as e:
+        if is_closed_error(e):
+            raise BrowserDeadError(str(e)) from e
         logger.warning("Error counting challenge images: %s", e)
         return 0
 
@@ -393,6 +408,8 @@ async def solve_recaptcha_yolo(
                 max_attempts,
             )
         except Exception as err:
+            if is_closed_error(err) or isinstance(err, BrowserDeadError):
+                raise BrowserDeadError(str(err)) from err
             logger.warning(
                 "YOLOv8 reCAPTCHA solve error on attempt %d/%d: %s",
                 attempt,
@@ -563,6 +580,8 @@ async def solve_recaptcha_audio(
             )
 
         except Exception as err:
+            if is_closed_error(err) or isinstance(err, BrowserDeadError):
+                raise BrowserDeadError(str(err)) from err
             logger.warning(
                 "Audio CAPTCHA solve error on attempt %d/%d: %s",
                 attempt,

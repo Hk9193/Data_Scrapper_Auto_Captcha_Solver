@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse
@@ -19,10 +20,14 @@ from playwright.async_api import (
 
 from captcha_solver import auto_solve_captcha, captcha_cleared, ensure_captcha_checkbox
 from config import (
+    CAPTCHA_COOLDOWN_SECONDS,
     CAPTCHA_SOLVER,
+    CONTINUOUS_MODE,
+    CYCLE_RESTART_DELAY,
     DELAY_MAX,
     DELAY_MIN,
     HEADLESS,
+    MAX_CAPTCHA_SOLVE_SECONDS,
     MAX_PAGES_PER_QUERY,
     MAX_RETRIES,
     MAX_TABS,
@@ -31,6 +36,7 @@ from config import (
     PROXY_ROTATION_LIST,
     PROXY_SERVER,
     PROXY_USERNAME,
+    QUERY_PROCESS_TIMEOUT_SECONDS,
     SEARCH_QUERIES,
     USER_AGENTS,
     VISIT_URLS,
@@ -38,6 +44,12 @@ from config import (
 from exporter import load_csv, save_to_csv, save_to_gsheet
 from logger_setup import setup_logger
 from playwright_stealth import Stealth
+from recovery import (
+    BrowserDeadError,
+    is_closed_error,
+    safe_close_context,
+    safe_close_page,
+)
 from utils import (
     deduplicate_emails,
     extract_emails,
@@ -75,21 +87,49 @@ class ScrapedRecord:
 class GoogleScraper:
     def __init__(self, context: BrowserContext) -> None:
         self.context = context
+        # Set True by search() when the last query was blocked by an
+        # unsolvable CAPTCHA — lets the orchestrator relaunch the browser.
+        self.captcha_blocked = False
 
     async def _new_page(self) -> Page:
         page = await self.context.new_page()
         await Stealth().apply_stealth_async(page)
         return page
 
-    async def _handle_captcha(self, page: Page) -> bool:
+    async def _handle_captcha(
+        self,
+        page: Page,
+        timeout_seconds: Optional[float] = None,
+    ) -> bool:
         """
-        Handle Google CAPTCHA with retry logic.
-        Returns True if CAPTCHA was cleared, False if it could not be resolved.
+        Handle Google CAPTCHA with retry logic AND a hard wall-clock budget.
+
+        A single CAPTCHA session may never consume more than
+        *timeout_seconds* (default MAX_CAPTCHA_SOLVE_SECONDS). Once the
+        budget is exhausted we give up so that an unsolvable challenge can
+        never silo the scraper for hours. Callers deal with `False` by
+        taking a cooldown, relaunching the browser, and moving on.
+
+        Returns True if CAPTCHA was cleared, False if it could not be
+        resolved within the budget.
+        Raises BrowserDeadError if the underlying browser is closed/dead.
         """
         MAX_CAPTCHA_ATTEMPTS = 5
         MANUAL_WAIT_TIMEOUT = 30  # seconds to wait for manual solve before retrying auto
+        if timeout_seconds is None:
+            timeout_seconds = MAX_CAPTCHA_SOLVE_SECONDS
+        deadline = time.monotonic() + timeout_seconds
 
         for attempt in range(1, MAX_CAPTCHA_ATTEMPTS + 1):
+            if time.monotonic() >= deadline:
+                logger.error(
+                    "CAPTCHA solve budget (%.0fs) exceeded after %d attempts. "
+                    "Giving up on this CAPTCHA.",
+                    timeout_seconds,
+                    attempt - 1,
+                )
+                return False
+
             logger.info(
                 "CAPTCHA handling attempt %d/%d...",
                 attempt,
@@ -102,8 +142,28 @@ class GoogleScraper:
                 logger.info("CAPTCHA cleared after checkbox interaction!")
                 return True
 
-            # Run automated solver
-            solved = await auto_solve_captcha(page, method=CAPTCHA_SOLVER)
+            # Run automated solver, capped by the remaining wall-clock budget.
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            try:
+                # Cap each auto-solve so a slow/hung solver is bounded.
+                solved = await asyncio.wait_for(
+                    auto_solve_captcha(page, method=CAPTCHA_SOLVER),
+                    timeout=min(180.0, remaining),
+                )
+            except asyncio.TimeoutError:
+                # The auto-solver didn't finish within budget — the browser is
+                # probably fine (YOLO is CPU-bound). Give up on automated
+                # solving for this session.
+                logger.error(
+                    "CAPTCHA auto-solve hit the %.0fs per-attempt budget.",
+                    min(180.0, remaining),
+                )
+                solved = False
+            except BrowserDeadError:
+                raise
+
             if solved and captcha_cleared(page):
                 logger.info("CAPTCHA solved successfully by automated solver!")
                 return True
@@ -134,6 +194,9 @@ class GoogleScraper:
 
                 wait_elapsed = 0
                 while wait_elapsed < MANUAL_WAIT_TIMEOUT:
+                    if time.monotonic() >= deadline:
+                        logger.error("CAPTCHA budget expired during manual wait.")
+                        return False
                     if captcha_cleared(page):
                         logger.info("CAPTCHA solved manually! Resuming...")
                         return True
@@ -156,7 +219,9 @@ class GoogleScraper:
                                     )
                                     await checkbox.click()
                                     await asyncio.sleep(2)
-                    except Exception:
+                    except Exception as exc:
+                        if is_closed_error(exc):
+                            raise BrowserDeadError(str(exc)) from exc
                         pass
 
                     await asyncio.sleep(3)
@@ -179,16 +244,28 @@ class GoogleScraper:
 
     async def search(self, query: str) -> List[Dict[str, str]]:
         all_results: List[Dict[str, str]] = []
+        self.captcha_blocked = False
         page = await self._new_page()
 
         try:
-            await page.goto("https://www.google.com", wait_until="domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)
-            search_box = await page.wait_for_selector("textarea[name='q'], input[name='q']", timeout=8000)
-            if search_box:
-                await search_box.fill(query)
-                await asyncio.sleep(random.uniform(0.5, 1.2))
-                await search_box.press("Enter")
-                await page.wait_for_load_state("domcontentloaded")
+            try:
+                await page.goto(
+                    "https://www.google.com",
+                    wait_until="domcontentloaded",
+                    timeout=PAGE_LOAD_TIMEOUT,
+                )
+                search_box = await page.wait_for_selector(
+                    "textarea[name='q'], input[name='q']", timeout=8000
+                )
+                if search_box:
+                    await search_box.fill(query)
+                    await asyncio.sleep(random.uniform(0.5, 1.2))
+                    await search_box.press("Enter")
+                    await page.wait_for_load_state("domcontentloaded")
+            except Exception as exc:
+                if is_closed_error(exc):
+                    raise BrowserDeadError(str(exc)) from exc
+                raise  # re-raise transient network errors for the outer handler
 
             for page_num in range(MAX_PAGES_PER_QUERY):
                 # Handle CAPTCHA if present
@@ -202,13 +279,16 @@ class GoogleScraper:
                             query,
                             page_num + 1,
                         )
+                        self.captcha_blocked = True
                         break
 
                     # Wait for the page to finish navigating back to the search
                     # results after the CAPTCHA is cleared.
                     await asyncio.sleep(2.5)
                     try:
-                        await page.wait_for_load_state("domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)
+                        await page.wait_for_load_state(
+                            "domcontentloaded", timeout=PAGE_LOAD_TIMEOUT
+                        )
                     except Exception:
                         pass
 
@@ -223,10 +303,12 @@ class GoogleScraper:
                 else:
                     break
 
+        except BrowserDeadError:
+            raise
         except Exception as exc:
             logger.error("Search error on query '%s': %s", query, exc)
         finally:
-            await page.close()
+            await safe_close_page(page)
 
         return all_results
 
@@ -352,7 +434,7 @@ class DataScraper:
         except Exception as exc:
             logger.warning("Failed to visit %s: %s", url, exc)
         finally:
-            await page.close()
+            await safe_close_page(page)
 
     async def _new_page(self, context: BrowserContext) -> Page:
         page = await context.new_page()
@@ -360,51 +442,215 @@ class DataScraper:
         return page
 
     async def run(self) -> None:
-        logger.info("Starting Scraper execution...")
+        """Run the scraper continuously (24/7) until manually stopped.
+
+        Every possible failure mode is converted into a controlled recovery:
+          - a hung Playwright call  -> per-query asyncio.wait_for timeout
+          - a dead browser/context -> BrowserDeadError -> recreate context
+          - an unsolvable CAPTCHA  -> time-budgeted -> cooldown -> fresh
+            browser session, then continue with the next query
+        """
+        logger.info("=" * 60)
+        logger.info("DJ Email Scraper — starting (continuous 24/7 mode)")
+        logger.info("Queries : %d  |  Max pages: %d  |  Max tabs: %d",
+                    len(SEARCH_QUERIES), MAX_PAGES_PER_QUERY, MAX_TABS)
+        if CONTINUOUS_MODE:
+            logger.info("Continuous mode enabled — will keep running until manually stopped.")
+        logger.info("=" * 60)
+
+        while True:
+            try:
+                await self._run_cycle()
+            except KeyboardInterrupt:
+                logger.info("Received stop signal (Ctrl+C). Shutting down cleanly...")
+                break
+            except Exception as exc:
+                logger.exception("Fatal error in run cycle: %s", exc)
+            finally:
+                self._flush_records()
+
+            if not CONTINUOUS_MODE:
+                logger.info("Single pass complete. Total unique emails: %d",
+                            len(self.global_seen_emails))
+                break
+
+            logger.info("Cycle finished. Restarting in %.1fs...", CYCLE_RESTART_DELAY)
+            try:
+                await asyncio.sleep(CYCLE_RESTART_DELAY)
+            except asyncio.CancelledError:
+                break
+            except KeyboardInterrupt:
+                logger.info("Stop requested during restart delay.")
+                break
+
+        self._flush_records()
+        logger.info("Scraper stopped. Total unique emails collected: %d",
+                    len(self.global_seen_emails))
+
+    # ── Cycle orchestrator ──────────────────────────────────────────────────
+
+    async def _run_cycle(self) -> None:
+        """One full pass over SEARCH_QUERIES with a fresh browser context."""
         async with async_playwright() as pw:
-            user_data_dir = os.path.join(os.getcwd(), "browser_profile")
-            context = await pw.chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                headless=HEADLESS,
-                user_agent=random.choice(USER_AGENTS),
-                viewport={"width": 1280, "height": 800},
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox"
-                ]
+            context: Optional[BrowserContext] = None
+            google_scraper: Optional[GoogleScraper] = None
+            try:
+                context = await self._launch_context(pw)
+                google_scraper = GoogleScraper(context)
+                logger.info("Browser context ready. Processing queries...")
+
+                for query in SEARCH_QUERIES:
+                    if context is None:
+                        logger.warning("Context was lost; relaunching browser.")
+                        context = await self._launch_context(pw)
+                        google_scraper = GoogleScraper(context)
+
+                    try:
+                        await asyncio.wait_for(
+                            self._process_one_query(google_scraper, context, query),
+                            timeout=QUERY_PROCESS_TIMEOUT_SECONDS,
+                        )
+                    except asyncio.TimeoutError:
+                        # A Playwright call hung (browser half-dead). Force a
+                        # clean browser recreation and move on — never freeze.
+                        logger.error(
+                            "Query '%s' exceeded the %ds processing ceiling. "
+                            "Recreating browser and continuing.",
+                            query,
+                            QUERY_PROCESS_TIMEOUT_SECONDS,
+                        )
+                        self._flush_records()
+                        await safe_close_context(context)
+                        context = await self._launch_context(pw)
+                        google_scraper = GoogleScraper(context)
+                    except BrowserDeadError as exc:
+                        logger.error(
+                            "Browser died while processing query '%s': %s. "
+                            "Recreating browser and continuing.",
+                            query,
+                            exc,
+                        )
+                        self._flush_records()
+                        await safe_close_context(context)
+                        context = await self._launch_context(pw)
+                        google_scraper = GoogleScraper(context)
+                    except Exception as exc:
+                        logger.exception(
+                            "Unexpected error while processing query '%s': %s",
+                            query,
+                            exc,
+                        )
+                        self._flush_records()
+            finally:
+                await safe_close_context(context)
+
+    async def _launch_context(self, pw: Playwright) -> BrowserContext:
+        """Launch a persistent browser context, retrying on profile-lock and
+        falling back to a fresh profile directory if the main one is stuck."""
+        base_dir = os.path.join(os.getcwd(), "browser_profile")
+        launch_kwargs = dict(
+            user_data_dir=base_dir,
+            headless=HEADLESS,
+            user_agent=random.choice(USER_AGENTS),
+            viewport={"width": 1280, "height": 800},
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ],
+        )
+
+        last_err: Optional[Exception] = None
+        for attempt in range(1, 4):
+            try:
+                context = await pw.chromium.launch_persistent_context(**launch_kwargs)
+                logger.info("Launched persistent browser context (attempt %d).", attempt)
+                return context
+            except Exception as exc:  # e.g. profile lock still held by zombie chrome
+                last_err = exc
+                logger.warning(
+                    "Browser launch failed (attempt %d/3): %s", attempt, exc
+                )
+                # Give the OS time to release the profile/database locks.
+                await asyncio.sleep(5 * attempt)
+
+        # Last resort: use a fresh profile directory so a stale lock or a
+        # corrupted profile can never stop the scraper permanently.
+        alt_dir = os.path.join(os.getcwd(), f"browser_profile_{int(time.time())}")
+        logger.error(
+            "Could not reuse '%s' after retries (%s). Using fresh profile '%s'.",
+            base_dir,
+            last_err,
+            alt_dir,
+        )
+        launch_kwargs["user_data_dir"] = alt_dir
+        return await pw.chromium.launch_persistent_context(**launch_kwargs)
+
+    async def _process_one_query(
+        self,
+        google_scraper: GoogleScraper,
+        context: BrowserContext,
+        query: str,
+    ) -> None:
+        """Search one query, extract emails, optionally visit URLs, save."""
+        google_scraper.captcha_blocked = False
+        results = await google_scraper.search(query)
+        logger.info("Query '%s' returned %d results.", query, len(results))
+
+        if google_scraper.captcha_blocked:
+            logger.warning(
+                "Query '%s' was blocked by an unsolvable CAPTCHA. "
+                "Taking a %.0fs cooldown, then relaunching the browser for a "
+                "fresh session before continuing with the next query.",
+                query,
+                CAPTCHA_COOLDOWN_SECONDS,
+            )
+            self._flush_records()
+            await asyncio.sleep(CAPTCHA_COOLDOWN_SECONDS)
+            # Signal the orchestrator to recreate the browser context.
+            raise BrowserDeadError(
+                f"CAPTCHA-blocked query: '{query[:60]}' — forcing browser recreation"
             )
 
-            google_scraper = GoogleScraper(context)
+        # Extract emails from snippets (always)
+        for target in results:
+            self._process_target(target)
 
-            # Step 1: Collect URLs across all queries and process incrementally
-            for query in SEARCH_QUERIES:
-                results = await google_scraper.search(query)
-                logger.info("Query '%s' returned %d results.", query, len(results))
+        # Optionally visit URLs for deeper extraction
+        if VISIT_URLS:
+            for target in results:
+                try:
+                    await self._visit_and_extract(context, target)
+                except Exception as exc:
+                    logger.warning("Visit task failed for %s: %s",
+                                   target.get("url", "?"), exc)
 
-                # Step 2: Extract emails from snippets (always)
-                for target in results:
-                    self._process_target(target)
+        # Save incrementally after each query to avoid data loss
+        self._flush_records(query=query)
 
-                # Step 3: Optionally visit URLs for deeper extraction
-                if VISIT_URLS:
-                    for target in results:
-                        await self._visit_and_extract(context, target)
-
-                # Step 4: Save incrementally after each query to avoid data loss
-                if self.records:
-                    dicts = [r.as_dict() for r in self.records]
-                    save_to_csv(dicts)
-                    save_to_gsheet(dicts)
-                    logger.info("Saved %d record(s) after query '%s'.", len(dicts), query)
-                    self.records.clear()  # avoid re-saving on next iteration
-
-            logger.info("Scraping complete. Total unique emails: %d", len(self.global_seen_emails))
-
-            await context.close()
+    def _flush_records(self, query: str = "") -> None:
+        """Persist any pending records to CSV/Sheets and clear the buffer."""
+        if not self.records:
+            return
+        dicts = [r.as_dict() for r in self.records]
+        try:
+            save_to_csv(dicts)
+            save_to_gsheet(dicts)
+            logger.info("Saved %d record(s)%s.",
+                        len(dicts),
+                        f" after query '{query}'" if query else "")
+        except Exception as exc:
+            logger.error("Failed to save %d record(s): %s", len(dicts), exc)
+        finally:
+            self.records.clear()
 
 
 
 if __name__ == "__main__":
     scraper = DataScraper()
-    asyncio.run(scraper.run())
+    try:
+        asyncio.run(scraper.run())
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt received — final cleanup.")
+    except Exception as exc:
+        logger.exception("Unhandled top-level error: %s", exc)
