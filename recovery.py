@@ -40,6 +40,22 @@ class QueryIncompleteError(Exception):
     completed page."""
 
 
+class GoogleAutomatedQueryBlockError(Exception):
+    """Raised when Google serves its hard rate-limit wall — "Try again
+    later / Your computer or network may be sending automated queries."
+
+    This is NOT a solvable CAPTCHA (no checkbox / image / audio challenge),
+    so the CAPTCHA solver and the cadence used at the /sorry/index wall must
+    NOT apply. The caller should:
+      - keep the current query + page + collected results PENDING,
+      - stop all Google traffic immediately (no tight browser recreation),
+      - apply a bounded exponential backoff/cooldown,
+      - periodically probe whether Google is usable again,
+      - resume the EXACT pending query/page once Google is available,
+      - if the block persists, pause/exit the Google worker rather than
+        burning retries."""
+
+
 # Classic Playwright closed-target messages (all flavours).
 _CLOSED_MARKERS = (
     "Target page, context or browser has been closed",
