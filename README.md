@@ -101,6 +101,9 @@ SEARCH_QUERIES = [
 | `ELEMENT_TIMEOUT` | `10000` | Element wait timeout (ms) |
 | `MAX_RETRIES` | `2` | Retries on page failure |
 | `CAPTCHA_SOLVER` | `"yolo"` | CAPTCHA method: `yolo`, `audio`, or `yolo_then_audio` |
+| `GOOGLE_BLOCK_COOLDOWN_SECONDS` | `60` | Initial cooldown (s) before the first Google availability re-check after an automated-query block |
+| `GOOGLE_BLOCK_BACKOFF_MAX_SECONDS` | `900` | Cooldown doubles on each failed probe, capped at this value (s) |
+| `GOOGLE_BLOCK_MAX_CHECKS` | `10` | Max availability probes before the Google worker pauses/exits |
 | `EXPAND_LINKTREE` | `True` | Follow bio-aggregator links |
 | `EXPAND_EXTERNAL` | `True` | Follow external expansion links |
 
@@ -117,6 +120,19 @@ The scraper includes an automated Google reCAPTCHA solver with two methods:
 The CAPTCHA solver uses the **recognizer** library (Vinyzu) which leverages **ultralytics YOLO** models. Both **YOLOv8** (`yolov8m-seg.pt`) and **YOLO 11** (`yolo11m-seg.pt`) segmentation model weights are included in the repo. The recognizer library automatically detects the best available model for image classification challenges (buses, traffic lights, crosswalks, bicycles, etc.).
 
 If automated solving fails, the scraper waits for **manual solve** in the open browser window, then automatically resumes.
+
+### Google "Automated Queries" Rate Limit
+
+Occasionally Google stops answering with a reCAPTCHA and instead serves a plain-text wall — **"Try again later. / Your computer or network may be sending automated queries."** This is **not** a CAPTCHA (there is no checkbox, image grid, or audio challenge to solve), so the scraper treats it as a distinct `GOOGLE_AUTOMATED_QUERY_BLOCK` state:
+
+1. **Detects** the wall from the page text (distinct from the solvable `/sorry/index` CAPTCHA) and **stops all Google query/retry activity immediately**.
+2. **Never calls the YOLO/audio CAPTCHA solver** against it, and **never hammers Google** with a tight refresh/browser-recreate loop (the browser is closed once).
+3. **Preserves** the current query, page number, and already-collected results as PENDING (they are saved to CSV/Sheets as they arrive).
+4. Applies a **bounded exponential backoff/cooldown** and **periodically probes** (a throwaway headless browser) whether Google is usable again.
+5. **Resumes the exact pending query/page** the moment Google is available.
+6. If the block persists beyond the budget, the scraper **safely pauses/exits the Google worker** for the cycle rather than burning CAPTCHA retries; unfinished queries stay PENDING and are retried next cycle.
+
+Clear log lines mark each transition: block start, cooldown/backoff begin, and querying resumes.
 
 ### Humanized CAPTCHA Solving
 
