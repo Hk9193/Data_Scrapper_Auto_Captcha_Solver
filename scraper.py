@@ -30,6 +30,7 @@ from captcha_solver import (
 from config import (
     BROWSER_RECYCLE_QUERIES,
     CAPTCHA_COOLDOWN_SECONDS,
+    CAPTCHA_MANUAL_WAIT_SECONDS,
     CAPTCHA_SOLVER,
     CONTINUOUS_MODE,
     CYCLE_BLOCKED_COOLDOWN_SECONDS,
@@ -78,6 +79,8 @@ from utils import (
     random_delay,
     username_from_url,
 )
+from traffic_manager import store, traffic
+
 
 logger = setup_logger("scraper")
 
@@ -155,38 +158,20 @@ class GoogleScraper:
         Raises BrowserDeadError if the underlying browser is closed/dead.
         """
         MAX_CAPTCHA_ATTEMPTS = 5
-        MANUAL_WAIT_TIMEOUT = 30  # seconds to wait for manual solve before retrying auto
+        # Dead-time a human is allowed to solve before re-attempting automated
+        # solving. Configurable so unattended 24/7 runs do not waste minutes.
+        MANUAL_WAIT_TIMEOUT = CAPTCHA_MANUAL_WAIT_SECONDS
         if timeout_seconds is None:
             timeout_seconds = MAX_CAPTCHA_SOLVE_SECONDS
         deadline = time.monotonic() + timeout_seconds
 
-        # ── ACTIVE image challenge already on screen: do NOT auto-solve or
-        # refresh/reinitialize it. Pause and let the existing manual CAPTCHA
-        # fallback handle the visible challenge, then resume the SAME
-        # query/page. The active challenge is left untouched. ──
-        if await active_image_challenge_present(page):
-            logger.info("ACTIVE IMAGE CAPTCHA DETECTED → WAITING FOR COMPLETION")
-            wait_elapsed = 0.0
-            poll = 2.0
-            while wait_elapsed < timeout_seconds:
-                if time.monotonic() >= deadline:
-                    break
-                if captcha_cleared(page):
-                    logger.info("CAPTCHA COMPLETED → RESUMING QUERY")
-                    return True
-                try:
-                    await page.wait_for_timeout(poll * 1000)
-                except Exception as exc:
-                    if is_closed_error(exc):
-                        raise BrowserDeadError(str(exc)) from exc
-                    pass
-                wait_elapsed += poll
-            logger.warning(
-                "Active image CAPTCHA not completed within the %.0fs budget. "
-                "The query/page stays PENDING and will be resumed on retry.",
-                timeout_seconds,
-            )
-            return False
+        # NOTE: An already-active image challenge (3x3/4x4 grid) is exactly
+        # what the automated solver is meant to resolve in 24/7 unattended
+        # mode, so we PROCEED to the auto-solve loop below instead of
+        # idle-waiting for a human that is not present. The solver itself
+        # distinguishes 'expired' vs 'active' states and never loops on an
+        # unsolvable / zero-image grid.
+
 
         for attempt in range(1, MAX_CAPTCHA_ATTEMPTS + 1):
             if time.monotonic() >= deadline:
@@ -285,7 +270,7 @@ class GoogleScraper:
                                     logger.info(
                                         "Checkbox unchecked (expired). Re-clicking..."
                                     )
-                                    await checkbox.click()
+                                    await checkbox.click(timeout=8000)
                                     await asyncio.sleep(2)
                     except Exception as exc:
                         if is_closed_error(exc):
@@ -406,6 +391,9 @@ class GoogleScraper:
 
         try:
             try:
+                # Global Google rate limit: the homepage load counts as one
+                # Google request and is throttled before navigation.
+                await traffic.throttle_google_request("google_homepage")
                 await page.goto(
                     "https://www.google.com",
                     wait_until="domcontentloaded",
@@ -430,6 +418,8 @@ class GoogleScraper:
                 if search_box:
                     await search_box.fill(query)
                     await asyncio.sleep(random.uniform(0.5, 1.2))
+                    # The search submit is a Google request - rate limit it.
+                    await traffic.throttle_google_request("google_search")
                     await search_box.press("Enter")
                     await page.wait_for_load_state("domcontentloaded")
             except Exception as exc:

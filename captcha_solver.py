@@ -94,7 +94,7 @@ async def ensure_captcha_checkbox(page: Page) -> bool:
         is_checked = await checkbox.get_attribute("aria-checked")
         if is_checked == "false":
             logger.info("reCAPTCHA checkbox is unchecked. Clicking it...")
-            await checkbox.click()
+            await checkbox.click(timeout=8000)
             await asyncio.sleep(2)
             # Check if it triggered a challenge or cleared
             is_checked = await checkbox.get_attribute("aria-checked")
@@ -444,16 +444,18 @@ async def solve_recaptcha_yolo(
             # Human pause before clicking the checkbox
             await asyncio.sleep(behavior.delay("before_checkbox"))
 
-            # --- If an ACTIVE image challenge is already displayed, do NOT
-            # refresh / reinitialize / re-solve it. Leave it for the existing
-            # manual CAPTCHA fallback, which preserves the query/page state. ---
+            # --- An ACTIVE image challenge (3x3/4x4 grid) is exactly what the
+            # automated solver is here to resolve in unattended 24/7 mode, so we
+            # PROCEED to solve it (do NOT skip). The subsequent 9/16-image count
+            # and expired-state checks make sure we only call YOLO on a real,
+            # solvable grid and never loop on a zero-image / expired challenge.
+            # (The old behaviour of returning False here disabled auto-solving on
+            # every real CAPTCHA and guaranteed a timeout when no human watched.)
             if await active_image_challenge_present(page):
                 logger.info(
-                    "ACTIVE IMAGE CAPTCHA DETECTED (active challenge present). "
-                    "Skipping automated solve to avoid refreshing an active "
-                    "challenge."
+                    "ACTIVE IMAGE CAPTCHA DETECTED (grid present) - proceeding "
+                    "with automated solve."
                 )
-                return False
 
             # --- Detect EXPIRED state before calling YOLO ---
             if await _detect_expired_state(page):
@@ -605,7 +607,7 @@ async def solve_recaptcha_audio(
                     logger.info("Clicking 'I'm not a robot' checkbox...")
                     # Human pause before clicking checkbox
                     await asyncio.sleep(behavior.delay("before_checkbox"))
-                    await checkbox.click()
+                    await checkbox.click(timeout=8000)
                     await asyncio.sleep(behavior.delay("after_challenge_load"))
 
             if captcha_cleared(page):
