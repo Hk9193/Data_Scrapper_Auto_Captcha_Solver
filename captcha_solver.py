@@ -33,6 +33,42 @@ def captcha_cleared(page: Page) -> bool:
     return "/sorry/index" not in page.url
 
 
+# Google's HARD rate-limit wall — a plain text page ("Try again later." /
+# "Your computer or network may be sending automated queries.") that shows
+# NO reCAPTCHA checkbox or image challenge. This is a rate limit, not a
+# CAPTCHA, so the YOLO/audio solver MUST NOT be run against it.
+#
+# This marker set is deliberately a SUBSET: it EXCLUDES the "/sorry/index"
+# "unusual traffic" phrasing, which still presents a solvable reCAPTCHA.
+_GOOGLE_AUTO_QUERY_MARKERS = (
+    "try again later",
+    "may be sending automated queries",
+    "sending automated queries",
+)
+
+
+async def is_google_automated_query_block(page: Page) -> bool:
+    """Return True if *page* is Google's hard automated-queries rate-limit
+    wall (a plain-text block with NO solvable CAPTCHA).
+
+    Distinct from a normal "/sorry/index" reCAPTCHA, which the solver can
+    legitimately attempt. When this is detected, the caller must stop
+    querying, apply a bounded backoff/cooldown, and wait for Google to lift
+    the block — never invoke the CAPTCHA solver against it.
+    """
+    try:
+        text = (
+            await asyncio.wait_for(page.inner_text("body"), timeout=5)
+        ).lower()
+    except Exception as exc:
+        if is_closed_error(exc):
+            raise BrowserDeadError(str(exc)) from exc
+        # Transient read failure — treat as NOT the hard block so the normal
+        # CAPTCHA path can still make a decision (e.g. network timeout).
+        return False
+    return any(marker in text for marker in _GOOGLE_AUTO_QUERY_MARKERS)
+
+
 async def ensure_captcha_checkbox(page: Page) -> bool:
     """
     Ensure the reCAPTCHA checkbox is checked.
