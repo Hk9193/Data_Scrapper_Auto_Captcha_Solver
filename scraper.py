@@ -6,6 +6,7 @@ import os
 import random
 import re
 import shutil
+import tempfile
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
@@ -24,6 +25,7 @@ from captcha_solver import (
     auto_solve_captcha,
     captcha_cleared,
     ensure_captcha_checkbox,
+    is_google_automated_query_block,
 )
 from config import (
     BROWSER_RECYCLE_QUERIES,
@@ -34,6 +36,9 @@ from config import (
     CYCLE_RESTART_DELAY,
     DELAY_MAX,
     DELAY_MIN,
+    GOOGLE_BLOCK_BACKOFF_MAX_SECONDS,
+    GOOGLE_BLOCK_COOLDOWN_SECONDS,
+    GOOGLE_BLOCK_MAX_CHECKS,
     HEADLESS,
     MAX_CAPTCHA_SOLVE_SECONDS,
     MAX_PAGES_PER_QUERY,
@@ -56,6 +61,7 @@ from playwright_stealth import Stealth
 from recovery import (
     BrowserDeadError,
     CAPTCHABlockError,
+    GoogleAutomatedQueryBlockError,
     QueryIncompleteError,
     context_alive,
     is_closed_error,
@@ -117,6 +123,11 @@ class GoogleScraper:
         # ⟶ CAPTCHA / resume state for the CURRENT search() call ⟵
         self.captcha_blocked = False     # True if a CAPTCHA could not be solved
         self.captcha_page_num = 0        # 0-based page where the CAPTCHA blocked
+        # ⟶ Google hard rate-limit (automated-query) state ⟵
+        # Set when Google serves the "Try again later / may be sending
+        # automated queries" wall. This is NOT a CAPTCHA — no solver applies.
+        self.google_blocked = False      # True if Google hard-blocked the search
+        self.google_block_page_num = 0   # 0-based page where the block appeared
         self.completed_pages = 0         # # of pages fully extracted this pass
         self.search_completed = False    # True when the pass reached the last page
 
@@ -301,13 +312,35 @@ class GoogleScraper:
 
     async def _ensure_no_captcha(self, page: Page, query: str, page_num: int) -> bool:
         """Return True if the current page is free of a CAPTCHA (or it was
-        solved). Return False if the CAPTCHA could not be resolved — the query
-        must be marked PENDING and retried from *page_num*.
+        solved). Return False if the page could not be worked around — the
+        query must be marked PENDING and retried from *page_num*.
+
+        Two distinct failure kinds are recognised:
+          - GOOGLE_AUTOMATED_QUERY_BLOCK (hard rate limit, no CAPTCHA)
+          - classic /sorry/index CAPTCHA (solvable with the YOLO/audio tool)
 
         Note: this does NOT decide to skip the query. The caller keeps the
         query PENDING and resumes it from the same page after recovery.
         """
-        # Trigger CAPTCHA handling if:
+        # ── 1) Google HARD rate-limit wall ("Try again later. / Your
+        # computer or network may be sending automated queries.").
+        # This is NOT a CAPTCHA — there is no checkbox / image / audio
+        # challenge to solve. Detect it FIRST and stop immediately so we
+        # never waste YOLO time or retries on an unsolvable block, and we
+        # never hammer Google in a tight refresh/recreate loop. ──
+        if await is_google_automated_query_block(page):
+            logger.critical(
+                "GOOGLE AUTOMATED-QUERY BLOCK DETECTED on query '%s' page %d — "
+                "hard rate limit, NOT a CAPTCHA. Stopping query activity "
+                "and entering cooldown (no CAPTCHA solver invoked).",
+                query,
+                page_num + 1,
+            )
+            self.google_blocked = True
+            self.google_block_page_num = page_num
+            return False
+
+        # ── 2) Trigger CAPTCHA handling if:
         #  - we are on the /sorry/index wall, OR
         #  - the URL says the CAPTCHA is uncleared, OR
         #  - an ACTIVE image challenge (e.g. "Select all images with
@@ -365,6 +398,8 @@ class GoogleScraper:
         all_results: List[Dict[str, str]] = []
         self.captcha_blocked = False
         self.captcha_page_num = start_page
+        self.google_blocked = False
+        self.google_block_page_num = start_page
         self.completed_pages = start_page
         self.search_completed = False
         page = await self._new_page()
@@ -376,6 +411,19 @@ class GoogleScraper:
                     wait_until="domcontentloaded",
                     timeout=PAGE_LOAD_TIMEOUT,
                 )
+                # If Google serves the hard automated-query wall right on the
+                # homepage (no search box at all), stop immediately instead of
+                # timing out on the search box and falling into a relaunch loop.
+                if await is_google_automated_query_block(page):
+                    logger.critical(
+                        "GOOGLE AUTOMATED-QUERY BLOCK DETECTED on homepage load "
+                        "for query '%s' — hard rate limit, NOT a CAPTCHA. "
+                        "Stopping query activity and entering cooldown.",
+                        query[:60],
+                    )
+                    self.google_blocked = True
+                    self.google_block_page_num = 0
+                    return all_results
                 search_box = await page.wait_for_selector(
                     "textarea[name='q'], input[name='q']", timeout=8000
                 )
@@ -394,6 +442,9 @@ class GoogleScraper:
             # ── Advance to the resume page (start_page) if we are recovering ──
             while current_page < start_page:
                 if not await self._ensure_no_captcha(page, query, current_page):
+                    if self.google_blocked:
+                        self.google_block_page_num = current_page
+                        return all_results
                     self.captcha_blocked = True
                     self.captcha_page_num = current_page
                     return all_results
@@ -408,6 +459,9 @@ class GoogleScraper:
             # ── Extract pages (resuming at current_page) ──
             while current_page < MAX_PAGES_PER_QUERY:
                 if not await self._ensure_no_captcha(page, query, current_page):
+                    if self.google_blocked:
+                        self.google_block_page_num = current_page
+                        return all_results
                     self.captcha_blocked = True
                     self.captcha_page_num = current_page
                     return all_results
@@ -687,6 +741,14 @@ class DataScraper:
                                 "CAPTCHA block on query '%s': %s",
                                 query, exc,
                             )
+                        except GoogleAutomatedQueryBlockError as exc:
+                            reason = "google_block"
+                            logger.error(
+                                "GOOGLE AUTOMATED-QUERY BLOCK on query '%s': %s. "
+                                "Stopping all Google query/retry activity and "
+                                "entering bounded backoff.",
+                                query, exc,
+                            )
                         except asyncio.TimeoutError:
                             reason = "timeout"
                             logger.error(
@@ -715,6 +777,46 @@ class DataScraper:
                                 "Unexpected error while processing query '%s': %s",
                                 query, exc,
                             )
+
+                        # ── GOOGLE AUTOMATED-QUERY BLOCK: dedicated path ──
+                        # This is a HARD rate limit (no solvable CAPTCHA), so it
+                        # must NOT consume the CAPTCHA/browser retry budget, must
+                        # NOT hammer Google with a tight relaunch loop, and must
+                        # wait (with periodic probes) for Google to come back.
+                        if reason == "google_block":
+                            # Reset the per-query recovery budget: this failure
+                            # is unrelated to CAPTCHAs/browser crashes. Preserve
+                            # the PENDING query/page set by _process_one_query.
+                            progress.recovery_attempts = 0
+                            self._flush_records()
+                            await safe_close_context(context)
+                            context = None
+                            google_scraper = None
+
+                            available = await self._handle_google_block_backoff(query)
+                            if available:
+                                # Google is usable again — relaunch a fresh
+                                # browser and resume the EXACT pending query/page.
+                                logger.info(
+                                    "Resuming pending query '%s' after Google "
+                                    "became available again.",
+                                    query[:60],
+                                )
+                                context = await self._launch_context(pw)
+                                google_scraper = GoogleScraper(context)
+                                continue
+
+                            # Block persisted through the whole backoff budget.
+                            # Pause/exit the Google worker for this cycle rather
+                            # than burning retries. Unfinished queries stay
+                            # PENDING and the next cycle retries them.
+                            logger.error(
+                                "Google remained rate-limited after the full "
+                                "backoff budget. Pausing the Google worker for "
+                                "this cycle; unfinished queries stay PENDING."
+                            )
+                            await asyncio.sleep(CYCLE_BLOCKED_COOLDOWN_SECONDS)
+                            return
 
                         # ── Bounded recovery: retry the SAME query ──
                         progress.recovery_attempts += 1
@@ -765,6 +867,121 @@ class DataScraper:
                         pass
             finally:
                 await safe_close_context(context)
+
+    async def _handle_google_block_backoff(self, query: str) -> bool:
+        """Apply a bounded exponential backoff while Google is hard
+        rate-limited ("automated queries" / "try again later" wall).
+
+        The main query/browser is already closed — no further Google traffic
+        is generated here. We sleep and periodically launch a lightweight,
+        throwaway probe browser to check whether Google is usable again.
+
+        Returns:
+          - True  once Google is available again, so the caller resumes the
+                  EXACT pending query/page,
+          - False if the block kept the whole backoff budget, so the caller
+                  pauses/exits the Google worker instead of burning retries.
+        """
+        total_waited = 0.0
+        delay = GOOGLE_BLOCK_COOLDOWN_SECONDS
+        checks = 0
+
+        logger.warning(
+            "Google-block cooldown started for query '%s'. Will sleep %.0fs "
+            "and probe Google up to %d times (max check interval %.0fs).",
+            query[:60], delay, GOOGLE_BLOCK_MAX_CHECKS,
+            GOOGLE_BLOCK_BACKOFF_MAX_SECONDS,
+        )
+
+        while True:
+            checks += 1
+            logger.info(
+                "GOOGLE BLOCK COOLDOWN (check %d/%d) — sleeping %.0fs for "
+                "query '%s' (total waited %.0fs).",
+                checks, GOOGLE_BLOCK_MAX_CHECKS, delay, query[:60], total_waited,
+            )
+            try:
+                await asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                logger.warning("Google-block backoff cancelled.")
+                return False
+            total_waited += delay
+
+            available = await self._probe_google_available()
+            if available:
+                logger.info(
+                    "GOOGLE AVAILABLE AGAIN after %.0fs backoff — resuming "
+                    "pending query '%s'.",
+                    total_waited, query[:60],
+                )
+                return True
+
+            logger.warning(
+                "Google still blocked after check %d/%d (%.0fs elapsed).",
+                checks, GOOGLE_BLOCK_MAX_CHECKS, total_waited,
+            )
+
+            if checks >= GOOGLE_BLOCK_MAX_CHECKS:
+                logger.error(
+                    "Google remained blocked after %d checks / %.0fs. Backoff "
+                    "budget exhausted.",
+                    checks, total_waited,
+                )
+                return False
+
+            # Exponential backoff, capped.
+            delay = min(delay * 2, GOOGLE_BLOCK_BACKOFF_MAX_SECONDS)
+
+    async def _probe_google_available(self) -> bool:
+        """Cheaply check whether Google is usable again (i.e. it is NOT
+        serving the hard automated-query wall), without touching the running
+        scraper browser / proxy session.
+
+        Launches a tiny throwaway headless browser in a temp profile and loads
+        the plain google.com homepage. Returns True if the wall is absent.
+        """
+        probe_dir: Optional[str] = None
+        try:
+            probe_dir = tempfile.mkdtemp(prefix="google_probe_")
+            playwright = await async_playwright().start()
+            try:
+                context = await playwright.chromium.launch_persistent_context(
+                    user_data_dir=probe_dir,
+                    headless=True,
+                    user_agent=random.choice(USER_AGENTS),
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                    ],
+                )
+                try:
+                    page = await context.new_page()
+                    try:
+                        await Stealth().apply_stealth_async(page)
+                    except Exception:
+                        pass  # stealth is best-effort for the probe
+                    await page.goto(
+                        "https://www.google.com",
+                        wait_until="domcontentloaded",
+                        timeout=20000,
+                    )
+                    await page.wait_for_timeout(1500)
+                    blocked = await is_google_automated_query_block(page)
+                finally:
+                    await safe_close_context(context)
+                return not blocked
+            finally:
+                await playwright.stop()
+        except Exception as exc:
+            if is_closed_error(exc):
+                logger.warning("Google probe browser was closed: %s", exc)
+            else:
+                logger.error("Google availability probe failed: %s", exc)
+            return False
+        finally:
+            if probe_dir:
+                shutil.rmtree(probe_dir, ignore_errors=True)
+
 
     async def _launch_context(self, pw: Playwright) -> BrowserContext:
         """Launch a persistent browser context, retrying on profile-lock and
@@ -872,6 +1089,19 @@ class DataScraper:
         )
         logger.info("Query '%s' search pass returned %d result(s).",
                     progress.query, len(results))
+
+        if google_scraper.google_blocked:
+            # Google served its HARD automated-query wall (rate limit, not a
+            # solvable CAPTCHA). Pages completed before the block were already
+            # processed + saved by the callback. Keep the query PENDING and
+            # resume from the exact page where the block appeared — the caller
+            # applies a bounded backoff and probes Google until it is usable
+            # again (and NEVER calls the CAPTCHA solver against this block).
+            progress.start_page = google_scraper.google_block_page_num
+            raise GoogleAutomatedQueryBlockError(
+                f"GOOGLE AUTOMATED-QUERY BLOCK on query '{progress.query[:60]}' "
+                f"at page {progress.start_page + 1} (hard rate limit, no CAPTCHA)"
+            )
 
         if google_scraper.captcha_blocked:
             # Pages completed before the block were already processed + saved
