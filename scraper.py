@@ -447,7 +447,23 @@ class GoogleScraper:
                 current_page += 1
 
             # ── Extract pages (resuming at current_page) ──
-            while current_page < MAX_PAGES_PER_QUERY:
+            while True:
+                if current_page >= MAX_PAGES_PER_QUERY:
+                    # But if there's a next button, extract one final page
+                    # before hitting the limit, so we maximize snippet collection.
+                    next_btn = await page.query_selector("a#pnnext")
+                    if next_btn:
+                        await random_delay(DELAY_MIN, DELAY_MAX)
+                        await next_btn.click()
+                        await page.wait_for_load_state("domcontentloaded")
+                        results = await self._extract_results(page, query)
+                        all_results.extend(results)
+                        if page_callback is not None:
+                            await page_callback(results, current_page)
+                        self.completed_pages = current_page + 1
+                        current_page += 1
+                    break
+
                 if not await self._ensure_no_captcha(page, query, current_page):
                     if self.google_blocked:
                         self.google_block_page_num = current_page
@@ -463,11 +479,11 @@ class GoogleScraper:
                 self.completed_pages = current_page + 1
                 current_page += 1
 
-                if current_page >= MAX_PAGES_PER_QUERY:
-                    break
+                # Check for next button BEFORE checking page limit,
+                # so we always follow available pagination pages.
                 next_btn = await page.query_selector("a#pnnext")
                 if not next_btn:
-                    break
+                    break  # Google has no more pages
                 await random_delay(DELAY_MIN, DELAY_MAX)
                 await next_btn.click()
                 await page.wait_for_load_state("domcontentloaded")
