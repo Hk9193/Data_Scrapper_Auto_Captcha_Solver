@@ -377,7 +377,7 @@ async def _wait_for_fresh_challenge(
     elapsed = 0.0
     poll_interval = 1.0
     while elapsed < timeout:
-        # Check if the CAPTCHA was cleared entirely
+        # CHECK IF CAPTCHA WAS CLEARED ENTIRELY BEFORE POLLING
         if captcha_cleared(page):
             logger.info("CAPTCHA cleared during fresh-challenge wait.")
             return True
@@ -390,12 +390,20 @@ async def _wait_for_fresh_challenge(
             )
             return True
 
-        # If still expired, try re-clicking the checkbox again
+        # If image_count is 0, the challenge has disappeared/dissolved.
+        # Do NOT keep polling — break early to avoid unnecessary wait.
         if image_count == 0:
-            expired = await _detect_expired_state(page)
-            if expired:
-                logger.info("Still in expired state. Re-clicking checkbox...")
-                await ensure_captcha_checkbox(page)
+            logger.info(
+                "Challenge disappeared (0 images) during fresh-challenge wait. "
+                "Breaking early to avoid unnecessary wait."
+            )
+            break
+
+        # If still expired, try re-clicking the checkbox again
+        expired = await _detect_expired_state(page)
+        if expired:
+            logger.info("Still in expired state. Re-clicking checkbox...")
+            await ensure_captcha_checkbox(page)
 
         await asyncio.sleep(poll_interval)
         elapsed += poll_interval
@@ -522,6 +530,21 @@ async def solve_recaptcha_yolo(
                 image_count,
             )
 
+            # RE-VERIFY challenge state immediately before calling the recognizer.
+            # Google can refresh the grid between the count check and now.
+            if not await active_image_challenge_present(page):
+                logger.warning(
+                    "Challenge disappeared before YOLO solve (attempt %d). "
+                    "Re-initializing...",
+                    attempt,
+                )
+                # Recycle the route handlers and retry the loop iteration
+                try:
+                    await page.unroute_all(behavior="ignoreErrors")
+                except Exception:
+                    pass
+                continue
+
             challenger = HumanizedAsyncChallenger(
                 page,
                 human_behavior=behavior,
@@ -531,12 +554,19 @@ async def solve_recaptcha_yolo(
             # Human pause after successful recognition before checking result
             await asyncio.sleep(behavior.delay("after_success"))
 
+            # Check if CAPTCHA was successfully solved AFTER the human pause.
+            # The pause ensures the page has time to transition to the post-solve state.
             if captcha_cleared(page):
                 logger.info("YOLOv8 reCAPTCHA solve successful!")
                 return True
 
+            # The solver ran but the CAPTCHA is still active.
+            # Distinguish between: (a) solver genuinely failed, vs (b) page just
+            # needs a moment to update. Log and retry rather than treating this
+            # as a permanent failure on this attempt.
             logger.warning(
-                "YOLOv8 solver attempt %d/%d finished but CAPTCHA page is still active.",
+                "YOLOv8 solver attempt %d/%d finished but CAPTCHA "
+                "page is still active — will retry (if attempts remain).",
                 attempt,
                 max_attempts,
             )
