@@ -16,6 +16,7 @@ import asyncio
 import base64
 import logging
 import random
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Tuple
@@ -71,8 +72,8 @@ class HumanBehavior:
         """Create a new random HumanBehavior for a CAPTCHA session."""
         thinking = random.choice(list(ThinkingProfile))
         mouse = random.choice(list(MousePersonality))
-        max_yolo = random.randint(3, 10)
-        max_retries = random.randint(15, 25)
+        max_yolo = random.randint(2, 4)
+        max_retries = random.randint(3, 6)
         return cls(
             thinking_profile=thinking,
             mouse_personality=mouse,
@@ -92,7 +93,7 @@ class HumanBehavior:
             "tile_click": (0.8, 3.0),
             "mouse_hesitation": (0.1, 0.4),
             "mouse_micro_pause": (0.05, 0.2),
-            "verify_pause": (2.0, 6.0),
+            "verify_pause": (0.35, 1.2),
             "frame_poll": (0.3, 0.8),
             "audio_wait": (1.5, 3.5),
             "audio_input": (0.5, 1.5),
@@ -107,7 +108,7 @@ class HumanBehavior:
             ranges["after_reload"] = (1.5, 3.0)
             ranges["before_reload"] = (1.0, 2.5)
             ranges["tile_click"] = (0.5, 1.5)
-            ranges["verify_pause"] = (1.5, 3.5)
+            ranges["verify_pause"] = (0.25, 0.9)
             ranges["frame_poll"] = (0.2, 0.5)
             ranges["audio_wait"] = (1.0, 2.0)
             ranges["audio_input"] = (0.3, 0.8)
@@ -120,7 +121,7 @@ class HumanBehavior:
             ranges["after_reload"] = (2.5, 6.0)
             ranges["before_reload"] = (2.0, 5.5)
             ranges["tile_click"] = (1.0, 3.5)
-            ranges["verify_pause"] = (3.0, 7.0)
+            ranges["verify_pause"] = (0.5, 1.1)
             ranges["frame_poll"] = (0.4, 1.0)
             ranges["audio_wait"] = (2.0, 4.0)
             ranges["audio_input"] = (0.8, 2.0)
@@ -160,6 +161,52 @@ class HumanBehavior:
         logger.info(f"Maximum Retries: {self.max_retries}")
         logger.info(f"Mouse Speed: {self.mouse_personality.value}")
         logger.info("=" * 50)
+
+
+async def _resolve_submit_button(captcha_frame, timeout: float = 5.0):
+    """Resolve the current Google submit button without holding stale DOM references.
+
+    Google swaps the challenge UI after every selection phase; the stale element from
+    a previous DOM snapshot can remain visible in the locator tree while the actual
+    button is replaced. We therefore re-query the bframe on each poll cycle and only
+    click a button that is both visible and enabled.
+    """
+    selectors = ("#recaptcha-verify-button", "#recaptcha-next-button")
+    deadline = time.monotonic() + timeout
+    last_error = None
+
+    while time.monotonic() < deadline:
+        for selector in selectors:
+            try:
+                button = captcha_frame.locator(selector)
+                count = await button.count()
+                if count <= 0:
+                    continue
+                visible = await button.is_visible()
+                enabled = await button.is_enabled()
+                if visible and enabled:
+                    logger.info(
+                        "CAPTCHA state=challenge-active | button_state=%s visible=%s enabled=%s | action=click_submit | result=ready",
+                        selector,
+                        visible,
+                        enabled,
+                    )
+                    return button, selector
+            except Exception as exc:  # pragma: no cover - defensive stale handle reset
+                last_error = exc
+                continue
+        await asyncio.sleep(0.12)
+
+    if last_error is not None:
+        logger.warning(
+            "CAPTCHA state=challenge-transition | button_state=unresolved | action=click_submit | result=stale_or_detached (%s)",
+            last_error,
+        )
+    else:
+        logger.warning(
+            "CAPTCHA state=challenge-transition | button_state=unresolved | action=click_submit | result=timeout",
+        )
+    return None, None
 
 
 class HumanizedAsyncChallenger(
@@ -273,7 +320,7 @@ class HumanizedAsyncChallenger(
 
         if self.dynamic and not area_captcha:
             while result_clicked:
-                await self.page.wait_for_timeout(5000)
+                await self.page.wait_for_timeout(1800)
                 result_clicked = await self.detect_tiles(prompt, area_captcha)
         elif not result_clicked:
             await self.load_captcha(captcha_frame, reset=True)
@@ -283,11 +330,31 @@ class HumanizedAsyncChallenger(
         # Human pause before pressing verify — as if checking selected tiles
         await asyncio.sleep(self.human_behavior.delay("verify_pause"))
 
+        # Re-read the current challenge state before interacting. Google replaces
+        # the bframe DOM after tile selection, so any saved locator may be stale.
+        submit_button, submit_selector = await _resolve_submit_button(captcha_frame, timeout=0.8)
+        if submit_button is None:
+            logger.warning(
+                "CAPTCHA state=post-selection | button_state=none_ready | action=submit_click | result=stop_for_manual_fallback"
+            )
+            raise TimeoutError("reCAPTCHA submit button changed or became stale; deferring to manual fallback.")
+
         # Submit challenge
         try:
-            submit_button = captcha_frame.locator("#recaptcha-verify-button")
-            await submit_button.click()
+            logger.info(
+                "CAPTCHA state=post-selection | button_state=%s | action=click_submit | result=pending",
+                submit_selector,
+            )
+            await submit_button.click(timeout=5000)
+            logger.info(
+                "CAPTCHA state=post-selection | button_state=%s | action=click_submit | result=clicked",
+                submit_selector,
+            )
         except Exception:
+            logger.warning(
+                "CAPTCHA state=post-selection | button_state=%s | action=click_submit | result=stale_or_intercepted",
+                submit_selector,
+            )
             await self.load_captcha(captcha_frame, reset=True)
             await self.page.wait_for_timeout(2000)
             return await self.handle_recaptcha()

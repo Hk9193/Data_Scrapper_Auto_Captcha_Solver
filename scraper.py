@@ -12,13 +12,22 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse
 
-from playwright.async_api import (
-    BrowserContext,
-    Page,
-    Playwright,
-    async_playwright,
-    TimeoutError as PWTimeoutError,
-)
+try:
+    from patchright.async_api import (
+        BrowserContext,
+        Page,
+        Playwright,
+        async_playwright,
+        TimeoutError as PWTimeoutError,
+    )
+except ImportError:
+    from playwright.async_api import (
+        BrowserContext,
+        Page,
+        Playwright,
+        async_playwright,
+        TimeoutError as PWTimeoutError,
+    )
 
 from captcha_solver import (
     active_image_challenge_present,
@@ -58,7 +67,10 @@ from config import (
 )
 from exporter import load_csv, save_to_csv, save_to_gsheet
 from logger_setup import setup_logger
-from playwright_stealth import Stealth
+try:
+    from playwright_stealth import Stealth
+except ImportError:
+    Stealth = None
 from recovery import (
     BrowserDeadError,
     CAPTCHABlockError,
@@ -72,12 +84,10 @@ from recovery import (
 from utils import (
     deduplicate_emails,
     extract_emails,
-    extract_instagram_usernames,
     extract_links_from_text,
     is_expansion_link,
     normalize_text,
     random_delay,
-    username_from_url,
 )
 from traffic_manager import store, traffic
 
@@ -87,20 +97,16 @@ logger = setup_logger("scraper")
 
 @dataclass
 class ScrapedRecord:
-    username: str = ""
     email: str = ""
     source_url: str = ""
     query_used: str = ""
-    found_in: str = ""
     page_title: str = ""
 
     def as_dict(self) -> Dict[str, str]:
         return {
-            "username": self.username,
             "email": self.email,
             "source_url": self.source_url,
             "query_used": self.query_used,
-            "found_in": self.found_in,
             "page_title": self.page_title,
         }
 
@@ -136,7 +142,11 @@ class GoogleScraper:
 
     async def _new_page(self) -> Page:
         page = await self.context.new_page()
-        await Stealth().apply_stealth_async(page)
+        if Stealth is not None:
+            try:
+                await Stealth().apply_stealth_async(page)
+            except Exception:
+                pass
         return page
 
     async def _handle_captcha(
@@ -195,23 +205,21 @@ class GoogleScraper:
                 logger.info("CAPTCHA cleared after checkbox interaction!")
                 return True
 
-            # Run automated solver, capped by the remaining wall-clock budget.
+            # Run automated solver, capped by an independent per-attempt budget
+            # (up to 50s) and remaining wall-clock budget.
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 return False
+            solve_timeout = min(50.0, max(5.0, remaining))
             try:
-                # Cap each auto-solve so a slow/hung solver is bounded.
                 solved = await asyncio.wait_for(
                     auto_solve_captcha(page, method=CAPTCHA_SOLVER),
-                    timeout=min(180.0, remaining),
+                    timeout=solve_timeout,
                 )
             except asyncio.TimeoutError:
-                # The auto-solver didn't finish within budget — the browser is
-                # probably fine (YOLO is CPU-bound). Give up on automated
-                # solving for this session.
                 logger.error(
                     "CAPTCHA auto-solve hit the %.0fs per-attempt budget.",
-                    min(180.0, remaining),
+                    solve_timeout,
                 )
                 solved = False
             except BrowserDeadError:
@@ -221,13 +229,6 @@ class GoogleScraper:
                 logger.info("CAPTCHA solved successfully by automated solver!")
                 return True
 
-            # NOTE: We do NOT navigate to google.com just because "/sorry/index"
-            # is in the URL. An expired CAPTCHA can remain on the same URL, and
-            # navigating away does not help recover from the expired state.
-            # The solver (auto_solve_captcha) now handles the EXPIRED state
-            # internally by re-clicking the checkbox and waiting for a fresh
-            # challenge. Navigation is only a last resort after the solver
-            # has genuinely failed.
             if "/sorry/index" in page.url:
                 logger.info(
                     "Still on Google CAPTCHA wall after solver attempt. "
@@ -253,25 +254,31 @@ class GoogleScraper:
                     if captcha_cleared(page):
                         logger.info("CAPTCHA solved manually! Resuming...")
                         return True
-                    
-                    # Check if the checkbox is still visible and clickable
-                    # (handles the "Verification challenge expired" case)
+
+                    # Only attempt to click checkbox if modal (bframe) is NOT actively displayed
+                    # (avoiding pointer interception timeouts).
                     try:
-                        anchor_frame = None
-                        for frame in page.frames:
-                            if "recaptcha" in frame.url and "anchor" in frame.url:
-                                anchor_frame = frame
-                                break
-                        if anchor_frame:
-                            checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
-                            if checkbox:
-                                is_checked = await checkbox.get_attribute("aria-checked")
-                                if is_checked == "false":
-                                    logger.info(
-                                        "Checkbox unchecked (expired). Re-clicking..."
-                                    )
-                                    await checkbox.click(timeout=8000)
-                                    await asyncio.sleep(2)
+                        bframe_open = False
+                        for f in page.frames:
+                            if "recaptcha" in f.url and "bframe" in f.url:
+                                tiles = await f.query_selector_all(".rc-imageselect-tile")
+                                if tiles:
+                                    bframe_open = True
+                                    break
+                        if not bframe_open:
+                            anchor_frame = None
+                            for frame in page.frames:
+                                if "recaptcha" in frame.url and "anchor" in frame.url:
+                                    anchor_frame = frame
+                                    break
+                            if anchor_frame:
+                                checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
+                                if checkbox:
+                                    is_checked = await checkbox.get_attribute("aria-checked")
+                                    if is_checked == "false":
+                                        logger.info("Checkbox unchecked (expired). Re-clicking...")
+                                        await checkbox.click(timeout=3000)
+                                        await asyncio.sleep(2)
                     except Exception as exc:
                         if is_closed_error(exc):
                             raise BrowserDeadError(str(exc)) from exc
@@ -441,6 +448,7 @@ class GoogleScraper:
                 next_btn = await page.query_selector("a#pnnext")
                 if not next_btn:
                     break  # no more pages; continue extracting from here
+                await traffic.throttle_google_request("google_pagination")
                 await random_delay(DELAY_MIN, DELAY_MAX)
                 await next_btn.click()
                 await page.wait_for_load_state("domcontentloaded")
@@ -453,6 +461,7 @@ class GoogleScraper:
                     # before hitting the limit, so we maximize snippet collection.
                     next_btn = await page.query_selector("a#pnnext")
                     if next_btn:
+                        await traffic.throttle_google_request("google_pagination")
                         await random_delay(DELAY_MIN, DELAY_MAX)
                         await next_btn.click()
                         await page.wait_for_load_state("domcontentloaded")
@@ -484,6 +493,7 @@ class GoogleScraper:
                 next_btn = await page.query_selector("a#pnnext")
                 if not next_btn:
                     break  # Google has no more pages
+                await traffic.throttle_google_request("google_pagination")
                 await random_delay(DELAY_MIN, DELAY_MAX)
                 await next_btn.click()
                 await page.wait_for_load_state("domcontentloaded")
@@ -526,7 +536,6 @@ class GoogleScraper:
 class DataScraper:
     def __init__(self) -> None:
         self.global_seen_emails: Set[str] = set()
-        self.global_seen_usernames: Set[str] = set()
         self.records: List[ScrapedRecord] = []
         self._load_existing_data()
 
@@ -535,11 +544,9 @@ class DataScraper:
         for row in rows:
             if row.get("email"):
                 self.global_seen_emails.add(row["email"].lower())
-            if row.get("username"):
-                self.global_seen_usernames.add(row["username"].lower())
 
     def _process_target(self, target: Dict[str, str]) -> None:
-        """Extract emails/usernames from a single Google result (snippet + title)."""
+        """Extract emails from a single Google result (snippet + title)."""
         title = target.get("title", "")
         snippet = target.get("snippet", "")
         url = target.get("url", "")
@@ -548,44 +555,23 @@ class DataScraper:
         # Combine all available text and extract emails
         combined_text = f"{title}\n{snippet}\n{url}"
         emails = extract_emails(combined_text)
-        usernames = extract_instagram_usernames(combined_text)
 
-        # Deduplicate against global seen sets
+        # Deduplicate against global seen emails
         new_emails = deduplicate_emails(emails, self.global_seen_emails)
-        new_usernames = [
-            u for u in usernames
-            if u and u not in self.global_seen_usernames
-        ]
-        for u in new_usernames:
-            self.global_seen_usernames.add(u)
 
-        # Create a record per email (primary output)
+        # Create a record per email (only save if email is found)
         if new_emails:
             for email in new_emails:
-                username = new_usernames[0] if new_usernames else ""
                 self.records.append(ScrapedRecord(
-                    username=username,
                     email=email,
                     source_url=url,
                     query_used=query,
-                    found_in="google_snippet",
                     page_title=title,
                 ))
             logger.info("Found %d new email(s) from %s", len(new_emails), url)
-        elif new_usernames:
-            # Record Instagram username even if no email found
-            for username in new_usernames:
-                self.records.append(ScrapedRecord(
-                    username=username,
-                    email="",
-                    source_url=url,
-                    query_used=query,
-                    found_in="google_snippet",
-                    page_title=title,
-                ))
 
     async def _visit_and_extract(self, context: BrowserContext, target: Dict[str, str]) -> None:
-        """Visit a URL and extract emails/usernames from the page content."""
+        """Visit a URL and extract emails from the page content."""
         url = target.get("url", "")
         if not url:
             return
@@ -595,24 +581,14 @@ class DataScraper:
             content = await page.content()
             title = await page.title()
             emails = extract_emails(content)
-            usernames = extract_instagram_usernames(content)
 
             new_emails = deduplicate_emails(emails, self.global_seen_emails)
-            new_usernames = [
-                u for u in usernames
-                if u and u not in self.global_seen_usernames
-            ]
-            for u in new_usernames:
-                self.global_seen_usernames.add(u)
 
             for email in new_emails:
-                username = new_usernames[0] if new_usernames else ""
                 self.records.append(ScrapedRecord(
-                    username=username,
                     email=email,
                     source_url=url,
                     query_used=target.get("query", ""),
-                    found_in="page_content",
                     page_title=title,
                 ))
             if new_emails:
@@ -624,7 +600,11 @@ class DataScraper:
 
     async def _new_page(self, context: BrowserContext) -> Page:
         page = await context.new_page()
-        await Stealth().apply_stealth_async(page)
+        if Stealth is not None:
+            try:
+                await Stealth().apply_stealth_async(page)
+            except Exception:
+                pass
         return page
 
     async def run(self) -> None:
@@ -1150,11 +1130,25 @@ class DataScraper:
 
 
 
-if __name__ == "__main__":
+async def async_main() -> None:
     scraper = DataScraper()
     try:
-        asyncio.run(scraper.run())
-    except KeyboardInterrupt:
-        logger.info("KeyboardInterrupt received — final cleanup.")
+        await scraper.run()
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        logger.info("KeyboardInterrupt received — initiating graceful shutdown...")
+    finally:
+        # Cancel and drain any lingering background tasks
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(async_main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Scraper process exited cleanly.")
     except Exception as exc:
         logger.exception("Unhandled top-level error: %s", exc)

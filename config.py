@@ -3,63 +3,119 @@ config.py — Scraper Configuration
 All tunable settings, search queries, and credentials live here.
 """
 
+import os
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
+
 # ─── Search Queries ────────────────────────────────────────────────────────────
 SEARCH_QUERIES = [
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Paris") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Marseille") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lyon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Toulouse") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nice") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nantes") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Montpellier") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Strasbourg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bordeaux") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lille") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rennes") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Reims") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Toulon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Saint-Étienne" OR "Saint Etienne") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Le Havre") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Grenoble") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dijon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Angers") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nîmes" OR "Nimes") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Villeurbanne") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Clermont-Ferrand" OR "Clermont Ferrand") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aix-en-Provence" OR "Aix en Provence") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Le Mans") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Brest") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tours") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Amiens") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Limoges") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Annecy") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Perpignan") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Boulogne-Billancourt" OR "Boulogne Billancourt") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Metz") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Besançon" OR "Besancon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Orléans" OR "Orleans") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Rouen") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Mulhouse") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Caen") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nancy") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Argenteuil") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Montreuil") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Roubaix") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tourcoing") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Avignon") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Poitiers") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Dunkerque" OR "Dunkirk") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Versailles") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("La Rochelle") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Pau") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Cannes") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Calais") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
-'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Antibes") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Stockholm") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gothenburg" OR "Göteborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Malmö" OR "Malmo") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Uppsala") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Västerås" OR "Vasteras") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Örebro" OR "Orebro") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Linköping" OR "Linkoping") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Helsingborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Jönköping" OR "Jonkoping") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Norrköping" OR "Norrkoping") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lund") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Umeå" OR "Umea") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gävle" OR "Gavle") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Borås" OR "Boras") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Södertälje" OR "Sodertalje") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Eskilstuna") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Halmstad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Växjö" OR "Vaxjo") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Karlstad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sundsvall") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Östersund" OR "Ostersund") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Trollhättan" OR "Trollhattan") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Luleå" OR "Lulea") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Borlänge" OR "Borlange") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kalmar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kristianstad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Skellefteå" OR "Skelleftea") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Falun") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Karlskrona") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nyköping" OR "Nykoping") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Uddevalla") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Motala") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Landskrona") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Örnsköldsvik" OR "Ornskoldsvik") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Vänersborg" OR "Vanersborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Trelleborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Varberg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kiruna") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Visby") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kungsbacka") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Copenhagen" OR "København") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aarhus" OR "Århus") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Odense") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Aalborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Esbjerg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Randers") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kolding") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Horsens") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Vejle") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Roskilde") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Herning") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Silkeborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Næstved" OR "Naestved") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Fredericia") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Viborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Køge" OR "Koge") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Holstebro") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Taastrup") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Slagelse") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Hillerød" OR "Hillerod") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sønderborg" OR "Sonderborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Svendborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Hjørring" OR "Hjorring") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Frederikshavn") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Helsingør" OR "Helsingor") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ringsted") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haderslev") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Skive") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Nykøbing Falster" OR "Nykobing Falster") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kalundborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Oslo") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bergen") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Trondheim") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Stavanger") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Drammen") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Fredrikstad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kristiansand") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sandnes") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tromsø" OR "Tromso") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sarpsborg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Skien") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Ålesund" OR "Alesund") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Sandefjord") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Haugesund") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Tønsberg" OR "Tonsberg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Moss") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Porsgrunn") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Bodø" OR "Bodo") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Arendal") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Hamar") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Larvik") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Halden") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Kongsberg") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Gjøvik" OR "Gjovik") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Lillehammer") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Molde") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Harstad") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Alta") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Narvik") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
+'site:linkedin.com/in ("business owner" OR founder OR CEO OR entrepreneur) ("Steinkjer") (mail OR contact) ("@gmail.com" OR "@outlook.com" OR "@hotmail.com" OR "@yahoo.com")',
 ]
 
 # ─── Pagination ────────────────────────────────────────────────────────────────
 MAX_PAGES_PER_QUERY = 15       # Google pages to crawl per query
-RESULTS_PER_PAGE    = 20       # Standard Google results per page
+RESULTS_PER_PAGE    = 15       # Standard Google results per page
 
 # ─── Scraping Strategy ─────────────────────────────────────────────────────────
 VISIT_URLS = False             # Set to False to ONLY scrape Google Snippets (extremely fast)
@@ -239,27 +295,19 @@ GSHEET_NAME             = ""                           # e.g. "Sales Leads"
 GSHEET_WORKSHEET        = "Sheet1"
 
 # ─── User-Agent Pool ───────────────────────────────────────────────────────────
+# Keep User-Agents consistent with host platform (Windows 10/11) to avoid
+# navigator.userAgentData / Client Hints fingerprint mismatches that trigger bot walls.
 USER_AGENTS = [
-    # Chrome / Windows
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    # Chrome on Windows 10/11
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
+    # Microsoft Edge on Windows 10/11
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
 
-    # Firefox / Windows
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) "
-    "Gecko/20100101 Firefox/125.0",
-
-    # Chrome / macOS
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-
-    # Safari / macOS
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 "
-    "(KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
-
-    # Chrome / Linux
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    # Firefox on Windows 10/11
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
 ]

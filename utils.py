@@ -24,33 +24,39 @@ EMAIL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-INSTAGRAM_PATTERN = re.compile(
-    r"instagram\.com/([A-Za-z0-9._]{1,30})/?",
-    re.IGNORECASE,
-)
 
-INSTAGRAM_RESERVED = {
-    "p", "tv", "reel", "reels", "stories", "explore",
-    "accounts", "about", "press", "api", "blog",
-    "jobs", "help", "legal", "privacy", "security",
-    "directory", "hashtag", "shoppingbag", "web",
-    "graphql", "static",
-}
 
 
 # ─── Email Utilities ────────────────────────────────────────────────────────────
+
+def normalize_obfuscated_text(text: str) -> str:
+    """De-obfuscate common email patterns like 'user [at] domain [dot] com'."""
+    if not text:
+        return ""
+    t = text.replace("%40", "@")
+    t = re.sub(r"\s*\[at\]\s*|\s*\(at\)\s*|\s+at\s+", "@", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s*\[dot\]\s*|\s*\(dot\)\s*", ".", t, flags=re.IGNORECASE)
+    return t
+
 
 def extract_emails(text: str) -> List[str]:
     """Extract and clean emails from raw text."""
     if not text:
         return []
-    raw = EMAIL_PATTERN.findall(text)
+    normalized = normalize_obfuscated_text(text)
+    raw = EMAIL_PATTERN.findall(normalized)
     return [clean_email(e) for e in raw if clean_email(e)]
 
 
 def clean_email(email: str) -> Optional[str]:
     """Return cleaned email or None if it should be discarded."""
     email = email.strip().lower()
+
+    # Strip trailing snippet suffixes like .read, read, .more, more, or ellipsis
+    email = re.sub(r"(\.(?:com|org|net|io|co|in|fr|de|uk|it|es|us|ae|me|ai|app|info|biz|eu|ca|gov|edu))(?:\.read|rea|\.more|more|\.contact|contact)+$", r"\1", email)
+    email = re.sub(r"(\.[a-z]{2,4})\.read$", r"\1", email)
+    email = re.sub(r"(\.[a-z]{2,4})read$", r"\1", email)
+    email = email.rstrip(".")
 
     # Basic validity gate
     if len(email) > 254 or "." not in email.split("@")[-1]:
@@ -62,7 +68,7 @@ def clean_email(email: str) -> Optional[str]:
             return None
 
     # Reject obvious junk suffixes left by bad regex matches
-    for bad_ext in (".png", ".jpg", ".gif", ".jpeg", ".svg", ".webp", ".mp4"):
+    for bad_ext in (".png", ".jpg", ".gif", ".jpeg", ".svg", ".webp", ".mp4", ".html", ".js", ".css"):
         if email.endswith(bad_ext):
             return None
 
@@ -81,24 +87,6 @@ def deduplicate_emails(
             new_emails.append(e)
     return new_emails
 
-
-# ─── Instagram Username Utilities ──────────────────────────────────────────────
-
-def extract_instagram_usernames(text: str) -> List[str]:
-    """Extract Instagram usernames from URLs inside arbitrary text."""
-    matches = INSTAGRAM_PATTERN.findall(text)
-    results: List[str] = []
-    for m in matches:
-        username = m.strip("/").split("?")[0]
-        if username and username.lower() not in INSTAGRAM_RESERVED:
-            results.append(username.lower())
-    return list(dict.fromkeys(results))  # preserve order, deduplicate
-
-
-def username_from_url(url: str) -> Optional[str]:
-    """Return Instagram username from a URL string, or None."""
-    usernames = extract_instagram_usernames(url)
-    return usernames[0] if usernames else None
 
 
 # ─── Link Expansion Utilities ──────────────────────────────────────────────────

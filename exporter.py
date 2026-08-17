@@ -17,11 +17,9 @@ from config import (
 logger = logging.getLogger("scraper.exporter")
 
 FIELDNAMES = [
-    "username",
     "email",
     "source_url",
     "query_used",
-    "found_in",
     "page_title",
 ]
 

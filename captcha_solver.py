@@ -87,6 +87,18 @@ async def ensure_captcha_checkbox(page: Page) -> bool:
         if not anchor_frame:
             return False
 
+        # If an active image challenge is already present, do not try to click the anchor
+        # (which is obscured by the bframe modal and would cause pointer-interception errors).
+        bframe = _peek_recaptcha_frame(page, "bframe")
+        if bframe:
+            try:
+                tiles = await bframe.query_selector_all(".rc-imageselect-tile")
+                if tiles and len(tiles) in (9, 16):
+                    logger.info("Active challenge modal already visible; skipping checkbox click.")
+                    return True
+            except Exception:
+                pass
+
         checkbox = await anchor_frame.query_selector("#recaptcha-anchor")
         if not checkbox:
             return False
@@ -94,7 +106,7 @@ async def ensure_captcha_checkbox(page: Page) -> bool:
         is_checked = await checkbox.get_attribute("aria-checked")
         if is_checked == "false":
             logger.info("reCAPTCHA checkbox is unchecked. Clicking it...")
-            await checkbox.click(timeout=8000)
+            await checkbox.click(timeout=5000)
             await asyncio.sleep(2)
             # Check if it triggered a challenge or cleared
             is_checked = await checkbox.get_attribute("aria-checked")
@@ -390,14 +402,25 @@ async def _wait_for_fresh_challenge(
             )
             return True
 
-        # If image_count is 0, the challenge has disappeared/dissolved.
-        # Do NOT keep polling — break early to avoid unnecessary wait.
+        # If image_count is 0, tiles may still be loading after a NEXT/VERIFY
+        # click. Wait 2 s and re-check before concluding the challenge is gone.
         if image_count == 0:
-            logger.info(
-                "Challenge disappeared (0 images) during fresh-challenge wait. "
-                "Breaking early to avoid unnecessary wait."
-            )
-            break
+            await asyncio.sleep(2.0)
+            image_count = await _count_challenge_images(page)
+            if image_count in (9, 16):
+                logger.info(
+                    "Challenge tiles finished loading (%d images). "
+                    "Ready for YOLO solver.",
+                    image_count,
+                )
+                return True
+            if image_count == 0:
+                logger.info(
+                    "Challenge truly gone (0 images after re-check). "
+                    "Breaking fresh-challenge wait."
+                )
+                break
+            # image_count is some other value — fall through and keep polling
 
         # If still expired, try re-clicking the checkbox again
         expired = await _detect_expired_state(page)
@@ -589,9 +612,24 @@ async def solve_recaptcha_yolo(
                 pass
 
         if attempt < max_attempts:
-            # Get a fresh grid before trying again — avoids getting stuck
-            # re-analysing the exact same (already-wrong) tiles.
-            await _click_reload_button(page, behavior)
+            # ── Root-cause fix for the multi-challenge expiry loop ──────────
+            # After solve_recaptcha() clicks NEXT/VERIFY, Google immediately
+            # loads a brand-new challenge on the same /sorry/index page.
+            # Calling _click_reload_button() in that state destroys the new
+            # challenge and causes the "expired → new challenge → destroyed
+            # → expired" cycle seen in the 9.6-min recording. Give the page
+            # 2 s to settle, then only reload when no fresh challenge exists.
+            await asyncio.sleep(2.0)
+            if await active_image_challenge_present(page):
+                logger.info(
+                    "Attempt %d/%d: Google already loaded a new challenge — "
+                    "solving it directly without forcing a reload.",
+                    attempt,
+                    max_attempts,
+                )
+            else:
+                # No fresh challenge visible → request a different grid.
+                await _click_reload_button(page, behavior)
 
     return False
 
